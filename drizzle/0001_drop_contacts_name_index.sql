@@ -1,0 +1,1 @@
+DROP INDEX "contacts_name_idx";
