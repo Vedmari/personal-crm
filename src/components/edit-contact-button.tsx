@@ -19,9 +19,13 @@ import type { ContactInput } from "@/lib/validation";
 
 export function EditContactButton({
   contactId,
+  updatedAt,
   values,
 }: {
   contactId: number;
+  // When `values` were last saved: lets the server notice a newer save
+  // made in another tab.
+  updatedAt: string;
   values: ContactInput;
 }) {
   const [open, setOpen] = useState(false);
@@ -46,7 +50,9 @@ export function EditContactButton({
         </DialogHeader>
         <ContactForm
           initialValues={values}
-          action={(formData) => updateContactAction(contactId, formData)}
+          action={(formData) =>
+            updateContactAction(contactId, updatedAt, formData)
+          }
           submitLabel="Сохранить"
           pendingLabel="Сохраняю…"
           onSuccess={handleSaved}

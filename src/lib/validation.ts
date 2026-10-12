@@ -96,3 +96,17 @@ export function parseContactId(value: unknown): number | null {
 
   return Number.isInteger(id) && id > 0 && id < 2 ** 31 ? id : null;
 }
+
+const ISO_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
+// A timestamp travels to the browser and back as text (Date.toISOString).
+// Returns null for anything else.
+export function parseTimestamp(value: unknown): Date | null {
+  if (typeof value !== "string" || !ISO_TIMESTAMP_PATTERN.test(value)) {
+    return null;
+  }
+
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+}

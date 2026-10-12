@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { addNoteAction } from "@/app/actions";
@@ -14,9 +14,18 @@ const SAVE_FAILED =
 export function NoteForm({ contactId }: { contactId: number }) {
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  // Ctrl+Enter submits the form directly and skips the disabled button,
+  // so a repeated press during a save has to be stopped here.
+  const isSaving = useRef(false);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (isSaving.current) {
+      return;
+    }
+
+    isSaving.current = true;
 
     const form = event.currentTarget;
     const formData = new FormData(form);
@@ -35,6 +44,8 @@ export function NoteForm({ contactId }: { contactId: number }) {
         setError(result.errors.body ?? result.message ?? SAVE_FAILED);
       } catch {
         setError(SAVE_FAILED);
+      } finally {
+        isSaving.current = false;
       }
     });
   }

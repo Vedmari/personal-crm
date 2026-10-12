@@ -93,6 +93,7 @@ async function ContactCard({
         </div>
         <EditContactButton
           contactId={contact.id}
+          updatedAt={contact.updatedAt.toISOString()}
           values={{
             name: contact.name,
             about: contact.about,

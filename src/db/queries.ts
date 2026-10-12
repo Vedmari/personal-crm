@@ -96,14 +96,34 @@ export async function createContact(input: ContactInput) {
   return rows[0];
 }
 
-export async function updateContact(id: number, input: ContactInput) {
+export type UpdateContactResult = "updated" | "changed_elsewhere" | "not_found";
+
+// Saves only if the contact has not been saved since the edit form got its
+// data. Without this check a tab that was opened earlier would silently
+// overwrite newer changes with the old values it still shows.
+export async function updateContact(
+  id: number,
+  input: ContactInput,
+  expectedUpdatedAt: Date,
+): Promise<UpdateContactResult> {
   const rows = await db
     .update(contacts)
     .set({ ...input, updatedAt: new Date() })
-    .where(eq(contacts.id, id))
+    .where(
+      and(
+        eq(contacts.id, id),
+        // The browser keeps time to the millisecond, the database to the
+        // microsecond, so the stored value is cut down before comparing.
+        sql`date_trunc('milliseconds', ${contacts.updatedAt}) = ${expectedUpdatedAt.toISOString()}::timestamptz`,
+      ),
+    )
     .returning({ id: contacts.id });
 
-  return rows[0];
+  if (rows[0]) {
+    return "updated";
+  }
+
+  return (await getContact(id)) ? "changed_elsewhere" : "not_found";
 }
 
 export async function addNote(contactId: number, body: string) {

@@ -12,6 +12,7 @@ import {
   parseContactForm,
   parseContactId,
   parseNoteForm,
+  parseTimestamp,
   type ContactField,
   type FieldErrors,
 } from "@/lib/validation";
@@ -21,6 +22,9 @@ export type ActionResult<Field extends string, Data = undefined> =
   | { ok: false; errors: FieldErrors<Field>; message?: string };
 
 const CONTACT_NOT_FOUND = "Контакт не найден. Обновите страницу.";
+
+const CONTACT_CHANGED_ELSEWHERE =
+  "Пока вы редактировали, этот контакт изменили в другой вкладке. Чтобы не затереть те изменения, ваши правки не сохранены. Скопируйте нужный текст, обновите страницу и внесите правки заново.";
 
 export async function createContactAction(
   formData: FormData,
@@ -38,13 +42,16 @@ export async function createContactAction(
   return { ok: true, data: contact };
 }
 
+// `updatedAt` is when the values shown in the edit form were last saved.
 export async function updateContactAction(
   contactId: number,
+  updatedAt: string,
   formData: FormData,
 ): Promise<ActionResult<ContactField>> {
   const id = parseContactId(contactId);
+  const expectedUpdatedAt = parseTimestamp(updatedAt);
 
-  if (id === null) {
+  if (id === null || expectedUpdatedAt === null) {
     return { ok: false, errors: {}, message: CONTACT_NOT_FOUND };
   }
 
@@ -54,10 +61,14 @@ export async function updateContactAction(
     return { ok: false, errors: parsed.errors };
   }
 
-  const updated = await updateContact(id, parsed.data);
+  const result = await updateContact(id, parsed.data, expectedUpdatedAt);
 
-  if (!updated) {
+  if (result === "not_found") {
     return { ok: false, errors: {}, message: CONTACT_NOT_FOUND };
+  }
+
+  if (result === "changed_elsewhere") {
+    return { ok: false, errors: {}, message: CONTACT_CHANGED_ELSEWHERE };
   }
 
   refresh();
