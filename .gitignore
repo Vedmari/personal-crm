@@ -3,6 +3,9 @@
 .env.*
 !.env.example
 
+# Database dumps contain real contacts
+/backups/
+
 # dependencies
 /node_modules
 

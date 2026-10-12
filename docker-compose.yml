@@ -1,4 +1,5 @@
-# Local development only: Postgres is the single service that runs in Docker.
+# Local development only: Postgres is the single service that runs in a container.
+# Run with Podman: `podman compose up -d` (the file keeps the standard Compose name).
 # Connection settings come from .env (see .env.example).
 services:
   postgres:

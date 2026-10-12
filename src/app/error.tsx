@@ -21,10 +21,10 @@ export default function ErrorPage({
         Не получилось загрузить данные
       </h1>
       <p className="text-muted-foreground">
-        Скорее всего, не запущена база данных. Запустите Docker Desktop,
+        Скорее всего, не запущена база данных. Запустите Podman Desktop,
         выполните в папке проекта команду{" "}
         <code className="rounded bg-muted px-1.5 py-0.5 text-sm text-foreground">
-          docker compose up -d
+          podman compose up -d
         </code>{" "}
         и попробуйте снова.
       </p>

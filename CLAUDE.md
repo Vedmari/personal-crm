@@ -24,7 +24,8 @@
 - React, Tailwind CSS, shadcn/ui
 - PostgreSQL, Drizzle: схема и миграции в коде
 - pnpm, `pnpm-lock.yaml` в git
-- Docker: локально только Postgres
+- Podman (приложение Podman Desktop): в контейнере локально только Postgres, запуск - `podman compose up -d`
+- Docker Desktop не ставить и не предлагать: на рабочем ноутбуке он запрещён
 - Библиотеки подбирай сам, новый внешний сервис - обсуждай со мной
 
 ## Секреты

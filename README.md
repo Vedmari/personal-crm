@@ -14,18 +14,20 @@
 
 ## Как запустить
 
-Нужны: [Docker Desktop](https://www.docker.com/products/docker-desktop/), [Node.js](https://nodejs.org/) 24 и [pnpm](https://pnpm.io/).
+Нужны: [Podman Desktop](https://podman-desktop.io/), [Node.js](https://nodejs.org/) 24 и [pnpm](https://pnpm.io/). Вместе с Podman Desktop должны стоять сам Podman и Compose — без них команда `podman compose` не работает.
+
+Docker Desktop не используем: на рабочем ноутбуке он запрещён.
 
 Все команды выполняются в папке проекта.
 
 ### Первый запуск
 
 1. Создать файл `.env` по образцу `.env.example` и заполнить значения. Если `.env` уже есть — шаг пропустить.
-2. Запустить Docker Desktop.
+2. Запустить Podman Desktop и подождать около минуты, пока он запустит Podman.
 3. Поднять базу данных:
 
    ```bash
-   docker compose up -d
+   podman compose up -d
    ```
 
 4. Установить зависимости:
@@ -59,13 +61,14 @@
 
 ### Каждый следующий раз
 
-1. Запустить Docker Desktop — база поднимется сама.
-2. Выполнить `pnpm start`.
-3. Открыть <http://localhost:3000>.
+1. Запустить Podman Desktop и подождать около минуты, пока он запустит Podman.
+2. Поднять базу: `podman compose up -d`. Сама она после перезагрузки не стартует.
+3. Выполнить `pnpm start`.
+4. Открыть <http://localhost:3000>.
 
 Остановить приложение — `Ctrl + C` в терминале, где оно запущено.
 
-Если вместо списка появилось «Не получилось загрузить данные» — не запущена база: запустите Docker Desktop, выполните `docker compose up -d` и нажмите «Попробовать снова».
+Если вместо списка появилось «Не получилось загрузить данные» — не запущена база: запустите Podman Desktop, выполните `podman compose up -d` и нажмите «Попробовать снова».
 
 ## Доступ
 
@@ -91,6 +94,7 @@
 - `src/db` — схема таблиц (`schema.ts`), подключение и запросы к базе. С базой работает только сервер, браузер к ней не обращается
 - `drizzle` — миграции базы
 - `scripts/seed.mts` — генератор тестовых данных
-- `docker-compose.yml` — PostgreSQL в Docker
+- `docker-compose.yml` — PostgreSQL в контейнере. Имя файла стандартное для Compose, запускается он через Podman
+- `backups` — копии базы данных, в git не попадают
 
 Стек: Next.js (App Router), TypeScript, React, Tailwind CSS, shadcn/ui, PostgreSQL, Drizzle, pnpm.
