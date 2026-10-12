@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, count, desc, eq, sql, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, or, sql, type SQL } from "drizzle-orm";
 
 import type { ContactInput } from "@/lib/validation";
 
@@ -25,9 +25,10 @@ function escapeLikePattern(value: string): string {
   return value.replace(/[\\%_]/g, (char) => `\\${char}`);
 }
 
-// Every word of the query must appear somewhere in the name,
-// so "петров иван" finds "Иван Петров".
-function nameMatches(search: string): SQL | undefined {
+// Search looks at the name and at "who this is" (`about`). Every word of the
+// query must appear in one of them, so "петров иван" finds "Иван Петров" and
+// "анна ветеринар" finds an Anna described as a vet.
+function contactMatches(search: string): SQL | undefined {
   const words = normalizeForSearch(search).split(/\s+/).filter(Boolean);
 
   if (words.length === 0) {
@@ -37,7 +38,10 @@ function nameMatches(search: string): SQL | undefined {
   return and(
     ...words.map((word) => {
       const pattern = `%${escapeLikePattern(word)}%`;
-      return sql`replace(lower(${contacts.name}), 'ё', 'е') like ${pattern}`;
+      return or(
+        sql`replace(lower(${contacts.name}), 'ё', 'е') like ${pattern}`,
+        sql`replace(lower(${contacts.about}), 'ё', 'е') like ${pattern}`,
+      );
     }),
   );
 }
@@ -61,7 +65,7 @@ export async function listContacts(search: string): Promise<{
         email: contacts.email,
       })
       .from(contacts)
-      .where(nameMatches(search))
+      .where(contactMatches(search))
       .orderBy(nameInAlphabeticalOrder, asc(contacts.id)),
     db.select({ value: count() }).from(contacts),
   ]);

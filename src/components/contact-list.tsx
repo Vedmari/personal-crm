@@ -86,7 +86,8 @@ export async function ContactList({
           По запросу «{search}» никого не нашлось
         </p>
         <p className="max-w-sm text-muted-foreground">
-          Поиск идёт по имени. Проверьте написание или{" "}
+          Поиск идёт по имени и по полю «Кто это». Проверьте написание
+          или{" "}
           <Link
             href="/"
             className="text-foreground underline underline-offset-4 hover:text-brand"

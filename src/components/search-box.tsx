@@ -10,6 +10,9 @@ const DEBOUNCE_MS = 200;
 
 const INPUT_CLASS_NAME = "h-10 rounded-xl bg-card px-9 text-base md:text-base";
 
+const SEARCH_PLACEHOLDER = "Имя или кто это";
+const SEARCH_LABEL = "Поиск по имени и по полю «Кто это»";
+
 // The search text lives in the URL (?q=...), so the server does the filtering
 // and a reloaded or shared link shows the same results.
 export function SearchBox() {
@@ -78,8 +81,8 @@ export function SearchBox() {
         enterKeyHint="search"
         value={value}
         onChange={(event) => handleChange(event.target.value)}
-        placeholder="Найти по имени"
-        aria-label="Поиск по имени"
+        placeholder={SEARCH_PLACEHOLDER}
+        aria-label={SEARCH_LABEL}
         autoComplete="off"
         spellCheck={false}
         className={INPUT_CLASS_NAME}
@@ -117,8 +120,8 @@ export function SearchBoxFallback() {
       <Input
         type="text"
         disabled
-        placeholder="Найти по имени"
-        aria-label="Поиск по имени"
+        placeholder={SEARCH_PLACEHOLDER}
+        aria-label={SEARCH_LABEL}
         className={INPUT_CLASS_NAME}
       />
     </div>
