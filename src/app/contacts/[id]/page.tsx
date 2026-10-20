@@ -106,11 +106,15 @@ async function ContactCard({
             </div>
           </div>
 
-          <div className="mt-row grid items-start gap-x-56 gap-y-row lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)]">
+          {/* grid-cols-1 is minmax(0, 1fr): without it the phone column grows
+              to the longest word of the name and the sheet is cut off on the right. */}
+          <div className="mt-row grid grid-cols-1 items-start gap-x-56 gap-y-row lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)]">
             <div>
-              <header className="flex items-start gap-16 md:gap-24">
+              {/* Phones: the avatar (two rules tall) sits above the name, so the
+                  name gets the full width of the sheet. Wider screens: side by side. */}
+              <header className="flex flex-col items-start md:flex-row md:gap-24">
                 <ContactAvatar name={contact.name} size="lg" />
-                <div className="min-w-0 flex-1">
+                <div className="w-full min-w-0 md:w-auto md:flex-1">
                   <h1 className="relative -top-7 font-serif text-h2 font-medium break-words text-ink md:-top-9 md:text-h2-md">
                     {contact.name}
                   </h1>
@@ -231,9 +235,9 @@ function ContactCardSkeleton() {
           <div className="flex h-row items-center">
             <Skeleton className="h-12 w-140" />
           </div>
-          <div className="mt-row flex items-start gap-16 md:gap-24">
+          <div className="mt-row flex flex-col items-start md:flex-row md:gap-24">
             <Skeleton className="size-64 rounded-full" />
-            <div className="flex-1 space-y-16 pt-8">
+            <div className="w-full space-y-16 pt-8 md:w-auto md:flex-1">
               <Skeleton className="h-28 w-280 max-w-full" />
               <Skeleton className="h-18 w-220 max-w-full" />
             </div>
