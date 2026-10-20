@@ -31,14 +31,16 @@ write_release() {
 
 wait_for_health() {
   local attempt
+  # The app needs a few seconds to start, so early failures are expected and not shown.
   for attempt in $(seq 1 30); do
-    if curl --fail --silent --show-error --max-time 5 "$1"; then
+    if curl --fail --silent --max-time 5 "$1"; then
       echo
       return 0
     fi
     sleep 2
   done
-  return 1
+  # Shows why the last attempt failed.
+  curl --fail --silent --show-error --max-time 5 "$1"
 }
 
 # Keeps only the given tags of the app image; untagged leftovers of the same
