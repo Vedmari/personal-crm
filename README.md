@@ -91,10 +91,15 @@ Docker Desktop не используем: на рабочем ноутбуке �
 
 - `src/app` — страницы: список контактов (`page.tsx`), карточка (`contacts/[id]/page.tsx`), серверные действия (`actions.ts`)
 - `src/components` — части интерфейса; `src/components/ui` — компоненты shadcn/ui
+- `src/styles/tokens.css` — цвета, шрифты, размеры текста и отступы. Это точная копия файла из лендинга (`personal-crm-landing/src/styles/tokens.css`): меняете один — поменяйте и второй. Шаг отступов — 1 пиксель, поэтому `p-16` — это 16 пикселей
+- `src/app/globals.css` — подключает Tailwind и токены, переносит из лендинга фактуры бумаги (линейка, поля, корешок, стикер)
+- `public/paper-noise.svg` — зернистость бумаги, тот же файл, что в лендинге
 - `src/db` — схема таблиц (`schema.ts`), подключение и запросы к базе. С базой работает только сервер, браузер к ней не обращается
 - `drizzle` — миграции базы
 - `scripts/seed.mts` — генератор тестовых данных
 - `docker-compose.yml` — PostgreSQL в контейнере. Имя файла стандартное для Compose, запускается он через Podman
 - `backups` — копии базы данных, в git не попадают
+
+Оформление — в стиле лендинга: листы записной книжки на зелёной обложке. Шрифты Alegreya, Alegreya Sans и Caveat лежат внутри приложения (пакеты Fontsource, те же, что в лендинге), с Google ничего не грузится.
 
 Стек: Next.js (App Router), TypeScript, React, Tailwind CSS, shadcn/ui, PostgreSQL, Drizzle, pnpm.

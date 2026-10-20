@@ -24,6 +24,10 @@ const EMPTY_VALUES: ContactInput = {
   agreements: "",
 };
 
+// A field ends 16px below a rule; the error moves down onto the next line
+// and gives the 16px back, so the fields below keep their places on the rules.
+const FIELD_ERROR_CLASS_NAME = "mt-16 -mb-16 font-sans text-body text-destructive";
+
 const SAVE_FAILED =
   "Не получилось сохранить. Проверьте, что база данных запущена, и попробуйте ещё раз.";
 
@@ -138,9 +142,11 @@ export function ContactForm<Data>({
       onSubmit={handleSubmit}
       onChange={handleChange}
       noValidate
-      className="grid gap-4"
+      className="mt-row grid"
     >
-      <div className="grid gap-4 sm:grid-cols-2">
+      {/* A label (one rule) and a field, then a 16px gap: every field takes
+          whole rules, so the text below stays on the lines of the sheet. */}
+      <div className="grid gap-x-24 gap-y-16 sm:grid-cols-2">
         {TEXT_FIELDS.map((field) => {
           const id = `contact-${field.name}`;
           const error = errors[field.name];
@@ -150,14 +156,14 @@ export function ContactForm<Data>({
               key={field.name}
               className={
                 field.half
-                  ? "grid content-start gap-1.5"
-                  : "grid content-start gap-1.5 sm:col-span-2"
+                  ? "grid content-start"
+                  : "grid content-start sm:col-span-2"
               }
             >
-              <Label htmlFor={id} className="gap-0.5">
+              <Label htmlFor={id} className="gap-2">
                 {field.label}
                 {field.required ? (
-                  <span aria-hidden="true" className="text-brand">
+                  <span aria-hidden="true" className="text-ink-red">
                     *
                   </span>
                 ) : null}
@@ -174,10 +180,9 @@ export function ContactForm<Data>({
                 autoFocus={field.name === "name"}
                 aria-invalid={error ? true : undefined}
                 aria-describedby={error ? `${id}-error` : undefined}
-                className="h-9"
               />
               {error ? (
-                <p id={`${id}-error`} className="text-sm text-destructive">
+                <p id={`${id}-error`} className={FIELD_ERROR_CLASS_NAME}>
                   {error}
                 </p>
               ) : null}
@@ -185,7 +190,7 @@ export function ContactForm<Data>({
           );
         })}
 
-        <div className="grid gap-1.5 sm:col-span-2">
+        <div className="grid sm:col-span-2">
           <Label htmlFor="contact-agreements">О чём договорились</Label>
           <Textarea
             id="contact-agreements"
@@ -197,12 +202,12 @@ export function ContactForm<Data>({
             aria-describedby={
               errors.agreements ? "contact-agreements-error" : undefined
             }
-            className="max-h-48 min-h-20"
+            className="max-h-240 min-h-112"
           />
           {errors.agreements ? (
             <p
               id="contact-agreements-error"
-              className="text-sm text-destructive"
+              className={FIELD_ERROR_CLASS_NAME}
             >
               {errors.agreements}
             </p>
@@ -211,7 +216,7 @@ export function ContactForm<Data>({
       </div>
 
       {formError ? (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="mt-16 font-sans text-body text-destructive">
           {formError}
         </p>
       ) : null}

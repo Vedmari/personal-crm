@@ -1,9 +1,12 @@
 const numberFormat = new Intl.NumberFormat("ru-RU");
 
-const noteDateFormat = new Intl.DateTimeFormat("ru-RU", {
+const noteDayFormat = new Intl.DateTimeFormat("ru-RU", {
   day: "numeric",
   month: "long",
   year: "numeric",
+});
+
+const noteTimeFormat = new Intl.DateTimeFormat("ru-RU", {
   hour: "2-digit",
   minute: "2-digit",
 });
@@ -35,8 +38,16 @@ export function pluralize(
   return forms[2];
 }
 
+// "10 октября 2025 · 12:04", like the dates on the landing sheets.
+// The parts are picked one by one to drop the "г." that ru-RU adds after the year.
 export function formatNoteDate(date: Date): string {
-  return noteDateFormat.format(date);
+  const day = noteDayFormat
+    .formatToParts(date)
+    .filter((part) => ["day", "month", "year"].includes(part.type))
+    .map((part) => part.value)
+    .join(" ");
+
+  return `${day} · ${noteTimeFormat.format(date)}`;
 }
 
 export function getInitials(name: string): string {
@@ -58,17 +69,15 @@ export function getGroupLetter(name: string): string {
   return /\p{L}/u.test(first) ? first : "#";
 }
 
-const AVATAR_HUES = [25, 55, 90, 145, 185, 230, 280, 335] as const;
-
-// The same name always gets the same colour.
-export function getAvatarHue(name: string): number {
+// The same name always gets the same colour: an index into `toneCount` inks.
+export function getAvatarTone(name: string, toneCount: number): number {
   let hash = 0;
 
   for (const char of name) {
     hash = (hash * 31 + (char.codePointAt(0) ?? 0)) >>> 0;
   }
 
-  return AVATAR_HUES[hash % AVATAR_HUES.length];
+  return hash % toneCount;
 }
 
 export function toTelHref(phone: string): string {

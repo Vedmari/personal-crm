@@ -4,8 +4,10 @@ import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { addNoteAction } from "@/app/actions";
+import { DATE_LINE_CLASS_NAME } from "@/components/paper";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { NOTE_MAX_LENGTH } from "@/lib/validation";
 
 const SAVE_FAILED =
@@ -58,10 +60,12 @@ export function NoteForm({ contactId }: { contactId: number }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="grid gap-2">
+    <form onSubmit={handleSubmit} noValidate className="grid">
       <label htmlFor="note-body" className="sr-only">
         Новая заметка
       </label>
+      {/* Written straight on the rules of the sheet: transparent, 32px lines,
+          9px + 1px border on top put the text on the same rules as the page. */}
       <Textarea
         id="note-body"
         name="body"
@@ -71,18 +75,32 @@ export function NoteForm({ contactId }: { contactId: number }) {
         onChange={() => setError(null)}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? "note-body-error" : "note-body-hint"}
-        className="max-h-80 min-h-24 bg-card"
+        className="max-h-320 min-h-96 rounded-sm border-dashed border-ink-muted/50 bg-transparent px-12 pt-9 pb-21 focus-visible:border-solid"
       />
       {error ? (
-        <p id="note-body-error" role="alert" className="text-sm text-destructive">
+        <p
+          id="note-body-error"
+          role="alert"
+          className="mt-10 -mb-10 font-sans text-body text-destructive md:text-body-md"
+        >
           {error}
         </p>
       ) : null}
-      <div className="flex items-center justify-between gap-3">
-        <p id="note-body-hint" className="text-xs text-muted-foreground">
+      {/* Two rules: the hint sits on the first one, the button is centred
+          on both. Phones have no Ctrl key, so the hint is desktop-only. */}
+      <div className="flex h-64 items-start justify-between gap-12">
+        <p
+          id="note-body-hint"
+          className={cn(DATE_LINE_CLASS_NAME, "mt-10 max-md:hidden")}
+        >
           Ctrl + Enter — сохранить
         </p>
-        <Button type="submit" size="lg" disabled={isPending}>
+        <Button
+          type="submit"
+          size="lg"
+          disabled={isPending}
+          className="mt-6 max-md:w-full"
+        >
           {isPending ? "Сохраняю…" : "Добавить заметку"}
         </Button>
       </div>

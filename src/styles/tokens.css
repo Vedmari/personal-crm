@@ -1,0 +1,162 @@
+/*
+ * Design tokens — the only place for colors, fonts and spacing.
+ * Source: design/README.md and the reference pages in design/design/.
+ * Names ending in "-md" are the desktop values (from the md breakpoint, 768px).
+ */
+
+@theme static {
+  /* Colors */
+  --color-book-cover: #3f5a3a; /* "cover" in the README; bg-cover is taken by Tailwind */
+  --color-ink: #2b3527;
+  --color-ink-strong: #2f3a2a;
+  --color-ink-body: #45503d;
+  --color-ink-muted: #7b6d53;
+  --color-ink-red: #a8452c;
+  --color-ink-blue: #2c4a7a;
+  --color-paper: #f1e9d2;
+  --color-paper-grid: #f4f0e2;
+  --color-paper-aged: #ece2c6;
+  --color-paper-edge: #e3d9be;
+  --color-paper-edge-deep: #d8cdb0;
+  --color-sticker: #f6e39a;
+  --color-sticker-shade: rgba(0, 0, 0, 0.05);
+  --color-btn-text: #f1ead4;
+  --color-btn-dot: #c9d4a8;
+  --color-rule: rgba(70, 100, 130, 0.28);
+  --color-grid-rule: rgba(70, 100, 130, 0.22);
+  --color-margin-line: rgba(176, 70, 60, 0.55);
+  --color-spine: rgba(60, 50, 20, 0.28);
+  --color-spine-fade: rgba(60, 50, 20, 0.08);
+  --color-tape: rgba(232, 222, 196, 0.8);
+
+  /* Fonts */
+  --font-serif: "Alegreya Variable", serif;
+  --font-serif-italic: "Alegreya", serif; /* only the 500 italic face is loaded */
+  --font-sans: "Alegreya Sans", sans-serif;
+  --font-hand: "Caveat Variable", cursive;
+
+  /* Type scale: every lined-sheet text sits on the 32px rows */
+  --text-logo: 19px;
+  --text-logo--line-height: 32px;
+  --text-logo-md: 21px;
+  --text-logo-md--line-height: 32px;
+
+  --text-date: 13px;
+  --text-date--line-height: 32px;
+  --text-date--letter-spacing: 0.12em;
+  --text-date-md: 14px;
+  --text-date-md--line-height: 32px;
+  --text-date-md--letter-spacing: 0.12em;
+
+  --text-h1: 33px;
+  --text-h1--line-height: 32px;
+  --text-h1-md: clamp(40px, 5.3vw, 76px);
+  --text-h1-md--line-height: clamp(64px, 6.7vw, 96px);
+  --text-h1-md--letter-spacing: -0.01em;
+
+  --text-lead: 18px;
+  --text-lead--line-height: 32px;
+  --text-lead-md: 22px;
+  --text-lead-md--line-height: 32px;
+
+  --text-h2: 33px;
+  --text-h2--line-height: 32px;
+  --text-h2-md: 46px;
+  --text-h2-md--line-height: 64px;
+
+  --text-body: 18px;
+  --text-body--line-height: 32px;
+  --text-body-md: 19px;
+  --text-body-md--line-height: 32px;
+  --text-intro-md: 21px;
+  --text-intro-md--line-height: 32px;
+
+  --text-feature: 22px;
+  --text-feature--line-height: 32px;
+  --text-feature-md: 24px;
+  --text-feature-md--line-height: 32px;
+
+  --text-mark: 26px;
+  --text-mark--line-height: 32px;
+  --text-mark-md: 28px;
+  --text-mark-md--line-height: 32px;
+
+  --text-cta: 17px;
+  --text-cta--line-height: normal;
+  --text-cta-md: 18px;
+  --text-cta-md--line-height: normal;
+  --text-arrow: 20px;
+  --text-arrow--line-height: normal;
+
+  --text-sticker-title: 30px;
+  --text-sticker-title--line-height: 1.1;
+  --text-sticker-title-md: 44px;
+  --text-sticker-title-md--line-height: 1.08;
+  --text-sticker-note: 25px;
+  --text-sticker-note--line-height: 1.15;
+  --text-sticker-note-md: 32px;
+  --text-sticker-note-md--line-height: 1.12;
+
+  /* Spacing: one unit is 1px, so pt-42 is 42px — the numbers match the mockup */
+  --spacing: 1px;
+  --spacing-row: 32px;
+
+  /* Fluid desktop spacing: keeps the sheets on the cover from 768 to 1440px */
+  --spacing-hero-wrap-r: clamp(16px, 3vw, 40px);
+  --spacing-hero-l: clamp(28px, 8vw, 120px);
+  --spacing-hero-r: clamp(72px, 11vw, 160px);
+  --spacing-ribbon-r: clamp(20px, 4vw, 60px);
+  --spacing-sheet-l: clamp(28px, 4vw, 56px);
+  --spacing-sheet-r: clamp(72px, 8vw, 112px);
+  --spacing-grid-x: clamp(24px, 4.5vw, 64px);
+  --spacing-problem-l: clamp(16px, 8vw, 120px);
+  --spacing-problem-r: clamp(16px, 4vw, 420px);
+  --spacing-solution-r: clamp(16px, 7.5vw, 110px);
+  --spacing-benefits-l: clamp(16px, 11vw, 160px);
+  --spacing-benefits-r: clamp(16px, 4vw, 360px);
+
+  /* Radii */
+  --radius-hero: 10px;
+  --radius-hero-md: 12px;
+  --radius-pill: 29px;
+
+  /* Shadows */
+  --shadow-hero: 4px 0 0 -1px var(--color-paper-edge), 8px 0 0 -2px var(--color-paper-edge-deep),
+    0 10px 24px rgba(0, 0, 0, 0.25);
+  --shadow-hero-md: 5px 0 0 -1px var(--color-paper-edge), 10px 0 0 -2px var(--color-paper-edge-deep),
+    0 14px 34px rgba(0, 0, 0, 0.28);
+  --shadow-sticker: 0 18px 16px -12px rgba(20, 30, 15, 0.45), 0 2px 4px rgba(20, 30, 15, 0.18);
+  --shadow-sticker-md: 0 26px 22px -16px rgba(20, 30, 15, 0.45), 0 2px 4px rgba(20, 30, 15, 0.18);
+  --shadow-tape: 0 1px 2px rgba(0, 0, 0, 0.12);
+  --inset-shadow-ribbon: inset -3px 0 0 rgba(0, 0, 0, 0.12);
+  --inset-shadow-ribbon-md: inset -4px 0 0 rgba(0, 0, 0, 0.12);
+  --drop-shadow-sheet: 0 8px 12px rgba(20, 30, 15, 0.32);
+  --drop-shadow-sheet-md: 0 12px 18px rgba(20, 30, 15, 0.32);
+}
+
+/* Paper geometry: grain tile, rule steps, margin lines, spine and holes */
+:root {
+  --paper-grain: url("/paper-noise.svg");
+  --paper-grain-size: 240px;
+  --paper-rule-step: 32px;
+  --paper-grid-step: 16px;
+  --paper-grid-shift: 8px;
+  --paper-margin-x: 57px;
+  --paper-margin-x-hero: 57px;
+  --paper-spine-fade: 18px;
+  --paper-spine-end: 34px;
+  --paper-ring-hole: 7px;
+  --paper-perforation-hole: 4px;
+  --paper-perforation-step: 14px;
+
+  @variant md {
+    --paper-grid-shift: 0px;
+    --paper-margin-x: 80px;
+    --paper-margin-x-hero: 120px;
+    --paper-spine-fade: 22px;
+    --paper-spine-end: 44px;
+    --paper-ring-hole: 8px;
+    --paper-perforation-hole: 5px;
+    --paper-perforation-step: 16px;
+  }
+}

@@ -37,11 +37,14 @@ export function EditContactButton({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button variant="outline" size="lg" />}>
-        <PencilIcon data-icon="inline-start" />
-        Изменить
+      {/* On phones only the pencil is shown, so the back link fits next to it. */}
+      <DialogTrigger
+        render={<Button variant="outline" className="max-md:size-40 max-md:p-0" />}
+      >
+        <PencilIcon />
+        <span className="max-md:sr-only">Изменить</span>
       </DialogTrigger>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Изменить контакт</DialogTitle>
           <DialogDescription>

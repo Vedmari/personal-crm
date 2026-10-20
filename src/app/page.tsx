@@ -2,26 +2,48 @@ import { Suspense } from "react";
 
 import { AddContactButton } from "@/components/add-contact-button";
 import { ContactList, ContactListSkeleton } from "@/components/contact-list";
+import { Cover, DIARY_SHEET_X, DiarySheet, Logo } from "@/components/paper";
 import { SearchBox, SearchBoxFallback } from "@/components/search-box";
+import { cn } from "@/lib/utils";
 
+// Everything on the sheet sits on its 32px rules: a text line starts 10px
+// below a rule boundary, and every block takes a whole number of rules.
 export default function HomePage(props: PageProps<"/">) {
   return (
-    <div className="mx-auto w-full max-w-4xl px-4 sm:px-6">
-      {/* The header height (h-34) is what the sticky letters in the list sit under. */}
-      <header className="sticky top-0 z-10 flex h-34 flex-col justify-end gap-4 bg-background pb-4">
-        <div className="flex items-center justify-between gap-4">
-          <h1 className="text-2xl font-semibold tracking-tight">Контакты</h1>
-          <AddContactButton />
+    <Cover>
+      <DiarySheet>
+        <div className={cn(DIARY_SHEET_X, "pt-42 pb-22")}>
+          <Logo />
+          <div className="mt-row flex max-w-960 items-start justify-between gap-16">
+            <h1 className="relative -top-7 font-serif text-h2 font-medium text-ink md:-top-9 md:text-h2-md">
+              Контакты
+            </h1>
+            {/* Centred on the letters of the heading. The negative margins keep
+                the row as tall as the heading, so the rules below stay in place. */}
+            <div className="-mt-16 -mb-4 md:-mt-3 md:mb-0">
+              <AddContactButton />
+            </div>
+          </div>
         </div>
-        <Suspense fallback={<SearchBoxFallback />}>
-          <SearchBox />
-        </Suspense>
-      </header>
-      <main>
-        <Suspense fallback={<ContactListSkeleton />}>
-          <ContactList searchParams={props.searchParams} />
-        </Suspense>
-      </main>
-    </div>
+        {/* Two rules tall. Its height (h-64) is what the sticky letters
+            of the list and src/lib/reveal-contact.ts count from. */}
+        <header className={cn(DIARY_SHEET_X, "sticky top-0 z-10 bg-paper paper-diary")}>
+          <div className="flex h-64 max-w-960 items-center">
+            <div className="min-w-0 flex-1">
+              <Suspense fallback={<SearchBoxFallback />}>
+                <SearchBox />
+              </Suspense>
+            </div>
+          </div>
+        </header>
+        <main className={cn(DIARY_SHEET_X, "pt-10 pb-38")}>
+          <div className="max-w-960">
+            <Suspense fallback={<ContactListSkeleton />}>
+              <ContactList searchParams={props.searchParams} />
+            </Suspense>
+          </div>
+        </main>
+      </DiarySheet>
+    </Cover>
   );
 }

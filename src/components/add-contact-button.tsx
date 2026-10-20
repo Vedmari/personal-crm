@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 import { createContactAction } from "@/app/actions";
 import { ContactForm } from "@/components/contact-form";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonDot } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -36,11 +36,23 @@ export function AddContactButton() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button size="lg" />}>
-        <PlusIcon data-icon="inline-start" />
-        Добавить контакт
+      {/* Stands next to the "Контакты" heading, so "Добавить" is enough.
+          On phones only the dot with the plus is shown: the label does not fit. */}
+      <DialogTrigger
+        render={
+          <Button
+            size="lg"
+            aria-label="Добавить контакт"
+            className="max-md:size-52 max-md:p-0"
+          />
+        }
+      >
+        <span className="max-md:sr-only">Добавить</span>
+        <ButtonDot className="max-md:mr-0">
+          <PlusIcon />
+        </ButtonDot>
       </DialogTrigger>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Новый контакт</DialogTitle>
           <DialogDescription>

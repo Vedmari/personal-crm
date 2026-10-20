@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 
 const DEBOUNCE_MS = 200;
 
-const INPUT_CLASS_NAME = "h-10 rounded-xl bg-card px-9 text-base md:text-base";
+// A pill as tall as the "Добавить контакт" button next to it.
+const INPUT_CLASS_NAME = "h-52 rounded-pill pr-44 pl-46";
 
 const SEARCH_PLACEHOLDER = "Имя или кто это";
 const SEARCH_LABEL = "Поиск по имени и по полю «Кто это»";
@@ -72,7 +73,7 @@ export function SearchBox() {
     <div className="relative">
       <SearchIcon
         aria-hidden="true"
-        className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+        className="pointer-events-none absolute top-1/2 left-18 size-18 -translate-y-1/2 text-ink-muted"
       />
       <Input
         ref={inputRef}
@@ -90,7 +91,7 @@ export function SearchBox() {
       {isPending ? (
         <LoaderCircleIcon
           aria-hidden="true"
-          className="absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin text-muted-foreground"
+          className="absolute top-1/2 right-16 size-18 -translate-y-1/2 animate-spin text-ink-muted"
         />
       ) : value ? (
         <button
@@ -100,9 +101,9 @@ export function SearchBox() {
             inputRef.current?.focus();
           }}
           aria-label="Очистить поиск"
-          className="absolute top-1/2 right-2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="absolute top-1/2 right-8 flex size-36 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted hover:bg-ink-strong/6 hover:text-ink-strong focus-visible:outline-2 focus-visible:outline-ring"
         >
-          <XIcon aria-hidden="true" className="size-4" />
+          <XIcon aria-hidden="true" className="size-18" />
         </button>
       ) : null}
     </div>
@@ -115,7 +116,7 @@ export function SearchBoxFallback() {
     <div className="relative">
       <SearchIcon
         aria-hidden="true"
-        className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+        className="pointer-events-none absolute top-1/2 left-18 size-18 -translate-y-1/2 text-ink-muted"
       />
       <Input
         type="text"

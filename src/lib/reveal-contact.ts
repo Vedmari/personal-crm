@@ -1,8 +1,8 @@
 const WAIT_FOR_ROW_MS = 5000;
 const SCROLL_SETTLE_MS = 1500;
 const FLASH_MS = 4000;
-// The sticky header of the list page covers the top of the viewport (h-34).
-const STICKY_HEADER_PX = 136;
+// The sticky search bar of the list page covers the top of the viewport (h-64).
+const STICKY_HEADER_PX = 64;
 
 function isInView(row: HTMLElement): boolean {
   const box = row.getBoundingClientRect();

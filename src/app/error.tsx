@@ -2,7 +2,8 @@
 
 import { useEffect } from "react";
 
-import { Button } from "@/components/ui/button";
+import { STICKER_TEXT_CLASS_NAME, StickerNote } from "@/components/sticker-note";
+import { Button, ButtonDot } from "@/components/ui/button";
 
 export default function ErrorPage({
   error,
@@ -16,21 +17,19 @@ export default function ErrorPage({
   }, [error]);
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center justify-center gap-3 px-4 py-24 text-center">
-      <h1 className="text-2xl font-semibold tracking-tight">
-        Не получилось загрузить данные
-      </h1>
-      <p className="text-muted-foreground">
+    <StickerNote title="Не получилось загрузить данные">
+      <p className={STICKER_TEXT_CLASS_NAME}>
         Скорее всего, не запущена база данных. Запустите Podman Desktop,
         выполните в папке проекта команду{" "}
-        <code className="rounded bg-muted px-1.5 py-0.5 text-sm text-foreground">
+        <code className="rounded-sm bg-ink-strong/8 px-6 py-2 font-mono text-cta font-normal whitespace-nowrap text-ink-strong">
           podman compose up -d
         </code>{" "}
         и попробуйте снова.
       </p>
-      <Button size="lg" className="mt-2" onClick={() => retry()}>
+      <Button size="lg" className="mt-8 self-start md:mt-12" onClick={() => retry()}>
         Попробовать снова
+        <ButtonDot>↻</ButtonDot>
       </Button>
-    </main>
+    </StickerNote>
   );
 }
