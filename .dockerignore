@@ -1,0 +1,17 @@
+# Secrets and real contacts never go into the image.
+.env
+.env.*
+!.env.example
+/backups/
+
+# Rebuilt inside the image
+node_modules
+.next
+*.tsbuildinfo
+next-env.d.ts
+
+# Not needed to build the app
+.git
+.github
+.claude
+/deploy/
