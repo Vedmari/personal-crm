@@ -18,6 +18,9 @@ export const contacts = pgTable("contacts", {
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+  // Set when the contact is deleted. The row stays while "Вернуть" can still
+  // bring it back, and is erased after that.
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 
 export const notes = pgTable(
@@ -26,11 +29,13 @@ export const notes = pgTable(
     id: integer().primaryKey().generatedAlwaysAsIdentity(),
     contactId: integer("contact_id")
       .notNull()
-      .references(() => contacts.id),
+      .references(() => contacts.id, { onDelete: "cascade" }),
     body: text().notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
+    // Same as contacts.deletedAt.
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => [
     index("notes_contact_id_created_at_idx").on(

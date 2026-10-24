@@ -87,7 +87,7 @@ export function parseNoteForm(formData: FormData): ParseResult<string, "body"> {
 
 // Route params and action arguments come from the client, so the id is checked
 // before it reaches the database. Returns null for anything that is not an id.
-export function parseContactId(value: unknown): number | null {
+export function parseId(value: unknown): number | null {
   const id = typeof value === "number" ? value : Number(value);
 
   if (typeof value === "string" && !/^\d{1,9}$/.test(value)) {

@@ -37,6 +37,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
       toastOptions={{
         classNames: {
           toast: "cn-toast font-sans! text-cta! font-bold! px-22! shadow-sticker!",
+          // "Вернуть" after a deletion: the light dot of the landing CTA.
+          actionButton:
+            "h-36! rounded-pill! bg-btn-dot! px-16! text-cta! font-bold! text-ink-strong! focus-visible:outline-2! focus-visible:outline-offset-2! focus-visible:outline-btn-dot!",
         },
       }}
       {...props}
