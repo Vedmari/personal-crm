@@ -10,7 +10,11 @@ import { count } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
-import { contacts, notes } from "../src/db/schema.ts";
+import {
+  contacts,
+  notes,
+  type KeepInTouchInterval,
+} from "../src/db/schema.ts";
 
 const CONTACT_COUNT = 1000;
 const RANDOM_SEED = 20261008;
@@ -49,9 +53,12 @@ function chance(probability: number): boolean {
   return random() < probability;
 }
 
-function pickWeighted<T>(options: readonly (readonly [T, number])[]): T {
+function pickWeighted<T>(
+  options: readonly (readonly [T, number])[],
+  next: () => number = random,
+): T {
   const total = options.reduce((sum, [, weight]) => sum + weight, 0);
-  let threshold = random() * total;
+  let threshold = next() * total;
 
   for (const [value, weight] of options) {
     threshold -= weight;
@@ -527,6 +534,29 @@ function makeEmail(firstName: string, surname: string): string {
   return `${local}${suffix}@${pick(EMAIL_DOMAINS)}`;
 }
 
+// --- Keep in touch: about every tenth contact has an interval ---
+
+// A generator of its own: drawing from `random` would shift every later draw
+// and change the people this seed has always produced.
+const keepInTouchRandom = createRandom(RANDOM_SEED + 1);
+
+const KEEP_IN_TOUCH_SHARE = 0.1;
+
+const KEEP_IN_TOUCH_WEIGHTS = [
+  ["week", 15],
+  ["month", 40],
+  ["quarter", 30],
+  ["year", 15],
+] as const satisfies readonly (readonly [KeepInTouchInterval, number])[];
+
+function pickKeepInTouch(): KeepInTouchInterval | null {
+  if (keepInTouchRandom() >= KEEP_IN_TOUCH_SHARE) {
+    return null;
+  }
+
+  return pickWeighted(KEEP_IN_TOUCH_WEIGHTS, keepInTouchRandom);
+}
+
 // --- Assembling contacts ---
 
 type SeedContact = {
@@ -574,6 +604,10 @@ function makeContacts(now: number): SeedContact[] {
       return { body: makeNoteBody(gender, noteDate), createdAt: noteDate };
     });
 
+    // Chosen when the contact was added, so contacts without notes are
+    // already overdue and the "Пора связаться" block is not empty.
+    const keepInTouchEvery = pickKeepInTouch();
+
     result.push({
       contact: {
         name,
@@ -582,6 +616,8 @@ function makeContacts(now: number): SeedContact[] {
         phone: chance(0.88) ? makePhone() : "",
         email: chance(0.75) ? makeEmail(firstName, surname) : "",
         agreements: chance(0.42) ? makeAgreement(gender) : "",
+        keepInTouchEvery,
+        keepInTouchSince: keepInTouchEvery ? createdAt : null,
         createdAt,
         updatedAt: createdAt,
       },

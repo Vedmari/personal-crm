@@ -2,6 +2,7 @@ import { Suspense } from "react";
 
 import { AddContactButton } from "@/components/add-contact-button";
 import { ContactList, ContactListSkeleton } from "@/components/contact-list";
+import { KeepInTouchBlock } from "@/components/keep-in-touch-block";
 import { Cover, DIARY_SHEET_X, DiarySheet, Logo } from "@/components/paper";
 import { SearchBox, SearchBoxFallback } from "@/components/search-box";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,11 @@ export default function HomePage(props: PageProps<"/">) {
         </header>
         <main className={cn(DIARY_SHEET_X, "pt-10 pb-38")}>
           <div className="max-w-960">
+            {/* Below the search bar, not above it: the block goes away when
+                a search starts, and the search bar must not jump up. */}
+            <Suspense fallback={null}>
+              <KeepInTouchBlock searchParams={props.searchParams} />
+            </Suspense>
             <Suspense fallback={<ContactListSkeleton />}>
               <ContactList searchParams={props.searchParams} />
             </Suspense>

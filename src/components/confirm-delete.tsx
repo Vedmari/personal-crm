@@ -100,18 +100,21 @@ export function ConfirmDelete<Data>({
 // The toast after a deletion: "Вернуть" stays for 10 seconds (longer while
 // the pointer is over it or the tab is hidden). `onExpire` runs when the toast
 // closes by itself or is swiped away; pressing "Вернуть" runs only `onUndo`.
+// "Связались" uses the same toast with "Отменить".
 export function toastWithUndo({
   message,
+  undoLabel = "Вернуть",
   onUndo,
   onExpire,
 }: {
   message: string;
+  undoLabel?: string;
   onUndo: () => void;
   onExpire: () => void;
 }) {
   toast(message, {
     duration: UNDO_TOAST_MS,
-    action: { label: "Вернуть", onClick: onUndo },
+    action: { label: undoLabel, onClick: onUndo },
     onAutoClose: onExpire,
     onDismiss: onExpire,
   });
