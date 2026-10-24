@@ -1,3 +1,5 @@
+import type { KeepInTouchInterval } from "@/db/schema";
+
 export type ContactInput = {
   name: string;
   about: string;
@@ -83,6 +85,26 @@ export function parseNoteForm(formData: FormData): ParseResult<string, "body"> {
   }
 
   return { ok: true, data: body };
+}
+
+// In the order of the choice in the contact card.
+export const KEEP_IN_TOUCH_INTERVALS = [
+  "week",
+  "month",
+  "quarter",
+  "year",
+] as const satisfies readonly KeepInTouchInterval[];
+
+// The interval chosen in the contact card; null is "Не задано".
+// Returns undefined for anything else.
+export function parseKeepInTouch(
+  value: unknown,
+): KeepInTouchInterval | null | undefined {
+  if (value === null) {
+    return null;
+  }
+
+  return KEEP_IN_TOUCH_INTERVALS.find((interval) => interval === value);
 }
 
 // Route params and action arguments come from the client, so the id is checked

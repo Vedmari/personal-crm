@@ -14,10 +14,11 @@ import {
   type SQL,
 } from "drizzle-orm";
 
+import { MOSCOW_TIME_ZONE } from "@/lib/format";
 import type { ContactInput } from "@/lib/validation";
 
 import { db } from "./index";
-import { contacts, notes } from "./schema";
+import { contacts, notes, type KeepInTouchInterval } from "./schema";
 
 export type ContactListItem = {
   id: number;
@@ -146,10 +147,157 @@ export async function updateContact(
   return (await getContact(id)) ? "changed_elsewhere" : "not_found";
 }
 
+// --- Keep in touch ---
+//
+// The card and the "Пора связаться" block count the deadline with the same
+// SQL, so they never disagree. Days are Moscow calendar days. Day values
+// leave the database as 'YYYY-MM-DD' text: a JS Date would shift them
+// to the time zone of the server.
+
+const keepInTouchPeriod = sql`case ${contacts.keepInTouchEvery}
+  when 'week' then interval '7 days'
+  when 'month' then interval '1 month'
+  when 'quarter' then interval '3 months'
+  when 'year' then interval '1 year'
+end`;
+
+// Deleted notes waiting for "Вернуть" do not count.
+const lastNoteAt = sql`(
+  select max(${notes.createdAt}) from ${notes}
+  where ${notes.contactId} = ${contacts.id} and ${notes.deletedAt} is null
+)`;
+
+function moscowDay(timestamp: SQL): SQL {
+  return sql`(${timestamp} at time zone ${MOSCOW_TIME_ZONE})::date`;
+}
+
+// Without notes the deadline counts from the moment the interval was chosen.
+// Adding months to a date keeps to the calendar: 31 January + 1 month is
+// 28 February.
+const dueDay = sql`(${moscowDay(sql`coalesce(${lastNoteAt}, ${contacts.keepInTouchSince})`)} + ${keepInTouchPeriod})::date`;
+
+// Positive once the deadline day is over.
+const overdueDays = sql`(${moscowDay(sql`now()`)} - ${dueDay})`;
+
+export type KeepInTouchDue = {
+  dueDay: string;
+  overdueDays: number;
+};
+
+export async function getKeepInTouchDue(
+  contactId: number,
+): Promise<KeepInTouchDue | undefined> {
+  const rows = await db
+    .select({
+      dueDay: sql<string>`${dueDay}::text`,
+      overdueDays: sql<number>`${overdueDays}`.mapWith(Number),
+    })
+    .from(contacts)
+    .where(
+      and(
+        eq(contacts.id, contactId),
+        isNull(contacts.deletedAt),
+        isNotNull(contacts.keepInTouchEvery),
+      ),
+    )
+    .limit(1);
+
+  return rows[0];
+}
+
+export type OverdueContact = {
+  id: number;
+  name: string;
+  every: KeepInTouchInterval;
+  // Moscow day of the latest note; null when there are no notes.
+  lastNoteDay: string | null;
+  overdueDays: number;
+};
+
+// Most overdue first; equal ones in the order of the contact list.
+export async function listOverdueContacts(): Promise<OverdueContact[]> {
+  const rows = await db
+    .select({
+      id: contacts.id,
+      name: contacts.name,
+      every: contacts.keepInTouchEvery,
+      lastNoteDay: sql<string | null>`${moscowDay(lastNoteAt)}::text`,
+      overdueDays: sql<number>`${overdueDays}`.mapWith(Number),
+    })
+    .from(contacts)
+    .where(
+      and(
+        isNull(contacts.deletedAt),
+        isNotNull(contacts.keepInTouchEvery),
+        sql`${overdueDays} > 0`,
+      ),
+    )
+    .orderBy(sql`${overdueDays} desc`, nameInAlphabeticalOrder, asc(contacts.id));
+
+  return rows.map((row) => ({
+    ...row,
+    every: row.every as KeepInTouchInterval,
+  }));
+}
+
+// Choosing a different interval restarts the count for a contact without
+// notes; choosing the same one again does not. `updatedAt` stays as it is:
+// it guards the edit form against changes from another tab, and the form
+// does not hold the interval.
+export async function setKeepInTouch(
+  id: number,
+  every: KeepInTouchInterval | null,
+) {
+  const rows = await db
+    .update(contacts)
+    .set({
+      keepInTouchEvery: every,
+      keepInTouchSince:
+        every === null
+          ? null
+          : sql`case
+              when ${contacts.keepInTouchEvery} = ${every}::keep_in_touch_interval
+                and ${contacts.keepInTouchSince} is not null
+              then ${contacts.keepInTouchSince}
+              else now()
+            end`,
+    })
+    .where(and(eq(contacts.id, id), isNull(contacts.deletedAt)))
+    .returning({ id: contacts.id });
+
+  return rows[0];
+}
+
 export async function addNote(contactId: number, body: string) {
   const rows = await db
     .insert(notes)
     .values({ contactId, body })
+    .returning({ id: notes.id });
+
+  return rows[0];
+}
+
+// "Связались" in the "Пора связаться" block is an ordinary note with this
+// text, so the deadline restarts like after any other note.
+const CONTACTED_NOTE = "Связались";
+
+export async function addContactedNote(contactId: number) {
+  return addNote(contactId, CONTACTED_NOTE);
+}
+
+// "Отменить" right after "Связались" erases that note at once: it is ten
+// seconds old and has no "Вернуть" of its own. The text check keeps a stray
+// id from erasing an ordinary note.
+export async function eraseContactedNote(id: number) {
+  const rows = await db
+    .delete(notes)
+    .where(
+      and(
+        eq(notes.id, id),
+        eq(notes.body, CONTACTED_NOTE),
+        isNull(notes.deletedAt),
+      ),
+    )
     .returning({ id: notes.id });
 
   return rows[0];

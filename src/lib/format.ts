@@ -1,14 +1,23 @@
+import type { KeepInTouchInterval } from "@/db/schema";
+
 const numberFormat = new Intl.NumberFormat("ru-RU");
+
+// Every date and time in the app is Moscow time, whatever the time zone of
+// the server (UTC in production) or of the device that opened the page.
+// The keep-in-touch SQL counts days in the same zone.
+export const MOSCOW_TIME_ZONE = "Europe/Moscow";
 
 const noteDayFormat = new Intl.DateTimeFormat("ru-RU", {
   day: "numeric",
   month: "long",
   year: "numeric",
+  timeZone: MOSCOW_TIME_ZONE,
 });
 
 const noteTimeFormat = new Intl.DateTimeFormat("ru-RU", {
   hour: "2-digit",
   minute: "2-digit",
+  timeZone: MOSCOW_TIME_ZONE,
 });
 
 export function formatCount(value: number): string {
@@ -49,6 +58,44 @@ export function formatNoteDate(date: Date): string {
 
   return `${day} · ${noteTimeFormat.format(date)}`;
 }
+
+// Day values from the database are calendar days already counted in Moscow
+// time, so they are formatted as they are, without another time zone shift.
+const calendarDayFormat = new Intl.DateTimeFormat("ru-RU", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+const moscowYearFormat = new Intl.DateTimeFormat("ru-RU", {
+  year: "numeric",
+  timeZone: MOSCOW_TIME_ZONE,
+});
+
+// "24 ноября" for a day of the current year, "1 декабря 2025" otherwise.
+// `day` is "YYYY-MM-DD".
+export function formatDay(day: string): string {
+  const withYear = day.slice(0, 4) !== moscowYearFormat.format(new Date());
+
+  return calendarDayFormat
+    .formatToParts(new Date(`${day}T00:00:00Z`))
+    .filter(
+      (part) =>
+        part.type === "day" ||
+        part.type === "month" ||
+        (withYear && part.type === "year"),
+    )
+    .map((part) => part.value)
+    .join(" ");
+}
+
+export const KEEP_IN_TOUCH_LABELS: Record<KeepInTouchInterval, string> = {
+  week: "Раз в неделю",
+  month: "Раз в месяц",
+  quarter: "Раз в квартал",
+  year: "Раз в год",
+};
 
 export function getInitials(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean);

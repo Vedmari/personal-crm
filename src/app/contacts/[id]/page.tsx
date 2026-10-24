@@ -6,6 +6,7 @@ import { ContactAvatar } from "@/components/contact-avatar";
 import { DeleteContactButton } from "@/components/delete-contact-button";
 import { DeleteNoteButton } from "@/components/delete-note-button";
 import { EditContactButton } from "@/components/edit-contact-button";
+import { KeepInTouchSelect } from "@/components/keep-in-touch-select";
 import { NoteForm } from "@/components/note-form";
 import {
   Cover,
@@ -14,8 +15,8 @@ import {
   DiarySheet,
 } from "@/components/paper";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getContact, listNotes } from "@/db/queries";
-import { formatNoteDate, pluralize, toTelHref } from "@/lib/format";
+import { getContact, getKeepInTouchDue, listNotes } from "@/db/queries";
+import { formatDay, formatNoteDate, pluralize, toTelHref } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { parseId } from "@/lib/validation";
 
@@ -79,7 +80,11 @@ async function ContactCard({
     notFound();
   }
 
-  const [contact, notes] = await Promise.all([getContact(id), listNotes(id)]);
+  const [contact, notes, due] = await Promise.all([
+    getContact(id),
+    listNotes(id),
+    getKeepInTouchDue(id),
+  ]);
 
   if (!contact) {
     notFound();
@@ -151,6 +156,25 @@ async function ContactCard({
                   ) : null}
                 </DetailRow>
                 <DetailRow label="Откуда знакомы">{contact.howWeMet}</DetailRow>
+                {/* The select is one rule tall; the deadline goes on the next rule. */}
+                <DetailRow label="Как часто общаться">
+                  <KeepInTouchSelect
+                    key={contact.keepInTouchEvery ?? "none"}
+                    contactId={contact.id}
+                    every={contact.keepInTouchEvery}
+                  />
+                  {due ? (
+                    due.overdueDays > 0 ? (
+                      <span className="block text-ink-red">
+                        Пора связаться: срок был {formatDay(due.dueDay)}
+                      </span>
+                    ) : (
+                      <span className="block">
+                        Связаться не позже {formatDay(due.dueDay)}
+                      </span>
+                    )
+                  ) : null}
+                </DetailRow>
               </dl>
             </div>
 

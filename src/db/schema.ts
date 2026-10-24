@@ -1,4 +1,20 @@
-import { index, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import {
+  index,
+  integer,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
+
+// How often to keep in touch with a contact. Not a free-text field, so the
+// database accepts only these values; NULL in the contact means "not set".
+export const keepInTouchInterval = pgEnum("keep_in_touch_interval", [
+  "week",
+  "month",
+  "quarter",
+  "year",
+]);
 
 // Optional text fields are stored as empty strings instead of NULL,
 // so the UI never has to tell "missing" from "empty".
@@ -12,6 +28,10 @@ export const contacts = pgTable("contacts", {
   email: text().notNull().default(""),
   // What we agreed on with this person.
   agreements: text().notNull().default(""),
+  keepInTouchEvery: keepInTouchInterval("keep_in_touch_every"),
+  // When the current interval was chosen. A contact without notes counts
+  // its keep-in-touch deadline from here.
+  keepInTouchSince: timestamp("keep_in_touch_since", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
@@ -45,5 +65,6 @@ export const notes = pgTable(
   ],
 );
 
+export type KeepInTouchInterval = (typeof keepInTouchInterval.enumValues)[number];
 export type Contact = typeof contacts.$inferSelect;
 export type Note = typeof notes.$inferSelect;
