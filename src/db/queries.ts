@@ -1,6 +1,18 @@
 import "server-only";
 
-import { and, asc, count, desc, eq, or, sql, type SQL } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  isNotNull,
+  isNull,
+  lt,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 
 import type { ContactInput } from "@/lib/validation";
 
@@ -65,9 +77,12 @@ export async function listContacts(search: string): Promise<{
         email: contacts.email,
       })
       .from(contacts)
-      .where(contactMatches(search))
+      .where(and(isNull(contacts.deletedAt), contactMatches(search)))
       .orderBy(nameInAlphabeticalOrder, asc(contacts.id)),
-    db.select({ value: count() }).from(contacts),
+    db
+      .select({ value: count() })
+      .from(contacts)
+      .where(isNull(contacts.deletedAt)),
   ]);
 
   return { items, total: totals[0]?.value ?? 0 };
@@ -77,7 +92,7 @@ export async function getContact(id: number) {
   const rows = await db
     .select()
     .from(contacts)
-    .where(eq(contacts.id, id))
+    .where(and(eq(contacts.id, id), isNull(contacts.deletedAt)))
     .limit(1);
 
   return rows[0];
@@ -87,7 +102,7 @@ export async function listNotes(contactId: number) {
   return db
     .select()
     .from(notes)
-    .where(eq(notes.contactId, contactId))
+    .where(and(eq(notes.contactId, contactId), isNull(notes.deletedAt)))
     .orderBy(desc(notes.createdAt), desc(notes.id));
 }
 
@@ -116,6 +131,7 @@ export async function updateContact(
     .where(
       and(
         eq(contacts.id, id),
+        isNull(contacts.deletedAt),
         // The browser keeps time to the millisecond, the database to the
         // microsecond, so the stored value is cut down before comparing.
         sql`date_trunc('milliseconds', ${contacts.updatedAt}) = ${expectedUpdatedAt.toISOString()}::timestamptz`,
@@ -137,4 +153,76 @@ export async function addNote(contactId: number, body: string) {
     .returning({ id: notes.id });
 
   return rows[0];
+}
+
+// Deleting only marks a row (`deletedAt`). The row is erased when the
+// "Вернуть" toast closes. If the tab was closed before that, the row is
+// erased by a later deletion: the toast timer pauses while the tab is hidden,
+// so an hour leaves plenty of room for a toast that is still open.
+const ERASE_DELETED_AFTER = sql`interval '1 hour'`;
+
+async function eraseExpiredDeletions() {
+  const expired = sql`now() - ${ERASE_DELETED_AFTER}`;
+
+  await db.delete(notes).where(lt(notes.deletedAt, expired));
+  // Notes of an erased contact go with it (on delete cascade).
+  await db.delete(contacts).where(lt(contacts.deletedAt, expired));
+}
+
+export async function deleteContact(id: number) {
+  await eraseExpiredDeletions();
+
+  const rows = await db
+    .update(contacts)
+    .set({ deletedAt: sql`now()` })
+    .where(and(eq(contacts.id, id), isNull(contacts.deletedAt)))
+    .returning({ id: contacts.id, name: contacts.name });
+
+  return rows[0];
+}
+
+export async function restoreContact(id: number) {
+  const rows = await db
+    .update(contacts)
+    .set({ deletedAt: null })
+    .where(and(eq(contacts.id, id), isNotNull(contacts.deletedAt)))
+    .returning({ id: contacts.id, name: contacts.name });
+
+  return rows[0];
+}
+
+// Only a contact marked as deleted can be erased, so a stray call
+// cannot wipe out a contact that is in use.
+export async function eraseDeletedContact(id: number) {
+  await db
+    .delete(contacts)
+    .where(and(eq(contacts.id, id), isNotNull(contacts.deletedAt)));
+}
+
+export async function deleteNote(id: number) {
+  await eraseExpiredDeletions();
+
+  const rows = await db
+    .update(notes)
+    .set({ deletedAt: sql`now()` })
+    .where(and(eq(notes.id, id), isNull(notes.deletedAt)))
+    .returning({ id: notes.id });
+
+  return rows[0];
+}
+
+export async function restoreNote(id: number) {
+  const rows = await db
+    .update(notes)
+    .set({ deletedAt: null })
+    .where(and(eq(notes.id, id), isNotNull(notes.deletedAt)))
+    .returning({ id: notes.id });
+
+  return rows[0];
+}
+
+export async function eraseDeletedNote(id: number) {
+  await db
+    .delete(notes)
+    .where(and(eq(notes.id, id), isNotNull(notes.deletedAt)));
 }

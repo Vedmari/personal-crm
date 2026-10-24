@@ -5,12 +5,18 @@ import { refresh } from "next/cache";
 import {
   addNote,
   createContact,
+  deleteContact,
+  deleteNote,
+  eraseDeletedContact,
+  eraseDeletedNote,
   getContact,
+  restoreContact,
+  restoreNote,
   updateContact,
 } from "@/db/queries";
 import {
   parseContactForm,
-  parseContactId,
+  parseId,
   parseNoteForm,
   parseTimestamp,
   type ContactField,
@@ -22,6 +28,10 @@ export type ActionResult<Field extends string, Data = undefined> =
   | { ok: false; errors: FieldErrors<Field>; message?: string };
 
 const CONTACT_NOT_FOUND = "Контакт не найден. Обновите страницу.";
+
+const NOTE_NOT_FOUND = "Заметка не найдена. Обновите страницу.";
+
+const RESTORE_TOO_LATE = "Не получилось вернуть: запись уже удалена насовсем.";
 
 const CONTACT_CHANGED_ELSEWHERE =
   "Пока вы редактировали, этот контакт изменили в другой вкладке. Чтобы не затереть те изменения, ваши правки не сохранены. Скопируйте нужный текст, обновите страницу и внесите правки заново.";
@@ -48,7 +58,7 @@ export async function updateContactAction(
   updatedAt: string,
   formData: FormData,
 ): Promise<ActionResult<ContactField>> {
-  const id = parseContactId(contactId);
+  const id = parseId(contactId);
   const expectedUpdatedAt = parseTimestamp(updatedAt);
 
   if (id === null || expectedUpdatedAt === null) {
@@ -80,7 +90,7 @@ export async function addNoteAction(
   contactId: number,
   formData: FormData,
 ): Promise<ActionResult<"body">> {
-  const id = parseContactId(contactId);
+  const id = parseId(contactId);
 
   if (id === null || !(await getContact(id))) {
     return { ok: false, errors: {}, message: CONTACT_NOT_FOUND };
@@ -97,4 +107,81 @@ export async function addNoteAction(
   refresh();
 
   return { ok: true, data: undefined };
+}
+
+// Deleting marks the contact; it is erased when the "Вернуть" toast closes.
+export async function deleteContactAction(
+  contactId: number,
+): Promise<ActionResult<never, { id: number; name: string }>> {
+  const id = parseId(contactId);
+  const contact = id === null ? undefined : await deleteContact(id);
+
+  if (!contact) {
+    return { ok: false, errors: {}, message: CONTACT_NOT_FOUND };
+  }
+
+  // No refresh() here: it would redraw the card as "not found" before the
+  // browser leaves it for the list.
+  return { ok: true, data: contact };
+}
+
+export async function restoreContactAction(
+  contactId: number,
+): Promise<ActionResult<never, { id: number; name: string }>> {
+  const id = parseId(contactId);
+  const contact = id === null ? undefined : await restoreContact(id);
+
+  if (!contact) {
+    return { ok: false, errors: {}, message: RESTORE_TOO_LATE };
+  }
+
+  refresh();
+
+  return { ok: true, data: contact };
+}
+
+export async function eraseDeletedContactAction(
+  contactId: number,
+): Promise<void> {
+  const id = parseId(contactId);
+
+  if (id !== null) {
+    await eraseDeletedContact(id);
+  }
+}
+
+export async function deleteNoteAction(
+  noteId: number,
+): Promise<ActionResult<never>> {
+  const id = parseId(noteId);
+
+  if (id === null || !(await deleteNote(id))) {
+    return { ok: false, errors: {}, message: NOTE_NOT_FOUND };
+  }
+
+  refresh();
+
+  return { ok: true, data: undefined };
+}
+
+export async function restoreNoteAction(
+  noteId: number,
+): Promise<ActionResult<never>> {
+  const id = parseId(noteId);
+
+  if (id === null || !(await restoreNote(id))) {
+    return { ok: false, errors: {}, message: RESTORE_TOO_LATE };
+  }
+
+  refresh();
+
+  return { ok: true, data: undefined };
+}
+
+export async function eraseDeletedNoteAction(noteId: number): Promise<void> {
+  const id = parseId(noteId);
+
+  if (id !== null) {
+    await eraseDeletedNote(id);
+  }
 }

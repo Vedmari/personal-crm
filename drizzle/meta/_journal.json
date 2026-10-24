@@ -15,6 +15,13 @@
       "when": 1791451808509,
       "tag": "0001_drop_contacts_name_index",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792861422907,
+      "tag": "0002_soft_delete",
+      "breakpoints": true
     }
   ]
 }

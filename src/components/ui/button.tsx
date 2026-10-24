@@ -9,6 +9,9 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: "bg-primary text-primary-foreground hover:bg-book-cover",
+        // Confirms a deletion.
+        destructive:
+          "bg-destructive text-primary-foreground hover:bg-destructive/90",
         outline:
           "border-ink-strong/30 bg-transparent text-ink-strong hover:border-ink-strong/60 hover:bg-ink-strong/5 aria-expanded:bg-ink-strong/5",
         ghost:

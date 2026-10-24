@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { ContactAvatar } from "@/components/contact-avatar";
+import { DeleteContactButton } from "@/components/delete-contact-button";
+import { DeleteNoteButton } from "@/components/delete-note-button";
 import { EditContactButton } from "@/components/edit-contact-button";
 import { NoteForm } from "@/components/note-form";
 import {
@@ -15,7 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getContact, listNotes } from "@/db/queries";
 import { formatNoteDate, pluralize, toTelHref } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import { parseContactId } from "@/lib/validation";
+import { parseId } from "@/lib/validation";
 
 const NOTE_FORMS = ["заметка", "заметки", "заметок"] as const;
 
@@ -71,7 +73,7 @@ async function ContactCard({
   params,
 }: Pick<PageProps<"/contacts/[id]">, "params">) {
   const { id: rawId } = await params;
-  const id = parseContactId(rawId);
+  const id = parseId(rawId);
 
   if (id === null) {
     notFound();
@@ -87,10 +89,11 @@ async function ContactCard({
     <main className="flex flex-col gap-40 md:gap-80">
       <DiarySheet>
         <div className={cn(DIARY_SHEET_X, "pt-42 pb-56 md:pb-70")}>
-          {/* One rule: the button is taller than the line and overlaps it a bit. */}
+          {/* One rule: the buttons are taller than the line and overlap it a bit. */}
           <div className="flex h-row items-center justify-between gap-16">
             {BACK_LINK}
-            <div className="-my-4">
+            <div className="-my-4 flex gap-8">
+              <DeleteContactButton contactId={contact.id} name={contact.name} />
               <EditContactButton
                 contactId={contact.id}
                 updatedAt={contact.updatedAt.toISOString()}
@@ -208,12 +211,19 @@ async function ContactCard({
             <ol className="mt-42 flex flex-col gap-row">
               {notes.map((note) => (
                 <li key={note.id}>
-                  <time
-                    dateTime={note.createdAt.toISOString()}
-                    className={cn(DATE_LINE_CLASS_NAME, "block")}
-                  >
-                    {formatNoteDate(note.createdAt)}
-                  </time>
+                  {/* One rule: the bin is taller than the line and overlaps it a bit. */}
+                  <div className="flex h-row items-center justify-between gap-16">
+                    <time
+                      dateTime={note.createdAt.toISOString()}
+                      className={DATE_LINE_CLASS_NAME}
+                    >
+                      {formatNoteDate(note.createdAt)}
+                    </time>
+                    <DeleteNoteButton
+                      noteId={note.id}
+                      dateLabel={formatNoteDate(note.createdAt)}
+                    />
+                  </div>
                   <p className="font-sans text-body break-words whitespace-pre-wrap text-ink-body md:text-body-md">
                     {note.body}
                   </p>
