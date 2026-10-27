@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
 import { Input } from "@/components/ui/input";
+import { listHref } from "@/lib/list-filter";
+import { parseId } from "@/lib/validation";
 
 const DEBOUNCE_MS = 200;
 
@@ -18,7 +20,10 @@ const SEARCH_LABEL = "Поиск по имени и по полю «Кто эт�
 // and a reloaded or shared link shows the same results.
 export function SearchBox() {
   const router = useRouter();
-  const urlQuery = (useSearchParams().get("q") ?? "").trim();
+  const searchParams = useSearchParams();
+  const urlQuery = (searchParams.get("q") ?? "").trim();
+  // Typing must not drop the chosen group.
+  const group = parseId(searchParams.get("group"));
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState(urlQuery);
   // True while the user has typed something the URL has not caught up with.
@@ -57,12 +62,12 @@ export function SearchBox() {
 
     const timer = window.setTimeout(() => {
       startTransition(() => {
-        router.replace(query ? `/?q=${encodeURIComponent(query)}` : "/");
+        router.replace(listHref({ q: query, group }));
       });
     }, DEBOUNCE_MS);
 
     return () => window.clearTimeout(timer);
-  }, [isDirty, query, urlQuery, router]);
+  }, [isDirty, query, urlQuery, group, router]);
 
   function handleChange(nextValue: string) {
     setValue(nextValue);

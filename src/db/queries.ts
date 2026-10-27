@@ -12,6 +12,7 @@ import {
   or,
   sql,
   type SQL,
+  type SQLWrapper,
 } from "drizzle-orm";
 
 import { MOSCOW_TIME_ZONE } from "@/lib/format";
@@ -19,7 +20,13 @@ import type { ContactInput } from "@/lib/validation";
 
 import { safeQuery } from "./errors";
 import { db } from "./index";
-import { contacts, notes, type KeepInTouchInterval } from "./schema";
+import {
+  contactGroups,
+  contacts,
+  groups,
+  notes,
+  type KeepInTouchInterval,
+} from "./schema";
 
 export type ContactListItem = {
   id: number;
@@ -65,10 +72,28 @@ function contactMatches(search: string): SQL | undefined {
 // the way a phone book does, and treats "ё" as "е".
 const nameInAlphabeticalOrder = sql`${contacts.name} collate "ru-x-icu"`;
 
-export const listContacts = safeQuery("listContacts", async (search: string): Promise<{
+// Only contacts that are in the group.
+function inGroup(groupId: number): SQL {
+  return sql`exists (
+    select 1 from ${contactGroups}
+    where ${contactGroups.contactId} = ${contacts.id} and ${contactGroups.groupId} = ${groupId}
+  )`;
+}
+
+// With a group, both the list and the total (the "of N" of the counter) are
+// about that group's contacts only.
+export const listContacts = safeQuery("listContacts", async (
+  search: string,
+  groupId: number | null = null,
+): Promise<{
   items: ContactListItem[];
   total: number;
 }> => {
+  const inScope = and(
+    isNull(contacts.deletedAt),
+    groupId === null ? undefined : inGroup(groupId),
+  );
+
   const [items, totals] = await Promise.all([
     db
       .select({
@@ -79,12 +104,9 @@ export const listContacts = safeQuery("listContacts", async (search: string): Pr
         email: contacts.email,
       })
       .from(contacts)
-      .where(and(isNull(contacts.deletedAt), contactMatches(search)))
+      .where(and(inScope, contactMatches(search)))
       .orderBy(nameInAlphabeticalOrder, asc(contacts.id)),
-    db
-      .select({ value: count() })
-      .from(contacts)
-      .where(isNull(contacts.deletedAt)),
+    db.select({ value: count() }).from(contacts).where(inScope),
   ]);
 
   return { items, total: totals[0]?.value ?? 0 };
@@ -375,3 +397,192 @@ export const eraseDeletedNote = safeQuery("eraseDeletedNote", async (id: number)
     .delete(notes)
     .where(and(eq(notes.id, id), isNotNull(notes.deletedAt)));
 });
+
+// --- Groups ---
+
+// The same key as the unique index on groups: capital letters and "ё"/"е" do
+// not make two names different.
+function groupNameKey(name: SQLWrapper): SQL {
+  return sql`replace(lower(${name}), 'ё', 'е')`;
+}
+
+export type GroupListItem = {
+  id: number;
+  name: string;
+  // Contacts that are not waiting for "Вернуть".
+  contactCount: number;
+};
+
+// By alphabet, like the contact list; an empty group has a count of 0.
+export const listGroups = safeQuery("listGroups", async (): Promise<GroupListItem[]> => {
+  return db
+    .select({
+      id: groups.id,
+      name: groups.name,
+      contactCount: count(contacts.id),
+    })
+    .from(groups)
+    .leftJoin(contactGroups, eq(contactGroups.groupId, groups.id))
+    .leftJoin(
+      contacts,
+      and(eq(contacts.id, contactGroups.contactId), isNull(contacts.deletedAt)),
+    )
+    .groupBy(groups.id)
+    .orderBy(sql`${groups.name} collate "ru-x-icu"`, asc(groups.id));
+});
+
+export type GroupRef = { id: number; name: string };
+
+// Makes the group, or finds the one that already has this name. Two tabs can
+// make the same name at once: the unique index lets one of them in, and the
+// other gets the group that won.
+export const createGroup = safeQuery("createGroup", async (
+  name: string,
+): Promise<{ group: GroupRef; created: boolean }> => {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const inserted = await db
+      .insert(groups)
+      .values({ name })
+      .onConflictDoNothing()
+      .returning({ id: groups.id, name: groups.name });
+
+    if (inserted[0]) {
+      return { group: inserted[0], created: true };
+    }
+
+    const existing = await db
+      .select({ id: groups.id, name: groups.name })
+      .from(groups)
+      .where(sql`${groupNameKey(groups.name)} = ${groupNameKey(sql`${name}`)}`)
+      .limit(1);
+
+    if (existing[0]) {
+      return { group: existing[0], created: false };
+    }
+
+    // The group that blocked the insert was deleted in between: try again.
+  }
+
+  throw new Error("createGroup failed: the group keeps changing");
+});
+
+export type SetContactGroupResult = "ok" | "contact_not_found" | "group_not_found";
+
+// Puts one contact into one group, or takes it out. One pair at a time, so a
+// tick in this tab never overwrites a tick made in another one. Adding twice
+// and removing twice are both fine. `updatedAt` of the contact stays as it is:
+// it guards the "Изменить" form, and the form does not hold groups.
+export const setContactGroup = safeQuery("setContactGroup", async (
+  contactId: number,
+  groupId: number,
+  member: boolean,
+): Promise<SetContactGroupResult> => {
+  const [contact, group] = await Promise.all([
+    db
+      .select({ id: contacts.id })
+      .from(contacts)
+      .where(and(eq(contacts.id, contactId), isNull(contacts.deletedAt)))
+      .limit(1),
+    db.select({ id: groups.id }).from(groups).where(eq(groups.id, groupId)).limit(1),
+  ]);
+
+  if (!contact[0]) {
+    return "contact_not_found";
+  }
+
+  if (!group[0]) {
+    return "group_not_found";
+  }
+
+  if (member) {
+    await db
+      .insert(contactGroups)
+      .values({ contactId, groupId })
+      .onConflictDoNothing();
+  } else {
+    await db
+      .delete(contactGroups)
+      .where(
+        and(
+          eq(contactGroups.contactId, contactId),
+          eq(contactGroups.groupId, groupId),
+        ),
+      );
+  }
+
+  return "ok";
+});
+
+// The groups of one contact, by alphabet.
+export const listContactGroups = safeQuery("listContactGroups", async (
+  contactId: number,
+): Promise<GroupRef[]> => {
+  return db
+    .select({ id: groups.id, name: groups.name })
+    .from(contactGroups)
+    .innerJoin(groups, eq(groups.id, contactGroups.groupId))
+    .where(eq(contactGroups.contactId, contactId))
+    .orderBy(sql`${groups.name} collate "ru-x-icu"`, asc(groups.id));
+});
+
+export const findGroup = safeQuery("findGroup", async (
+  id: number,
+): Promise<GroupRef | undefined> => {
+  const rows = await db
+    .select({ id: groups.id, name: groups.name })
+    .from(groups)
+    .where(eq(groups.id, id))
+    .limit(1);
+
+  return rows[0];
+});
+
+export type RenameGroupResult =
+  | { status: "renamed"; group: GroupRef }
+  | { status: "not_found" }
+  // Another group already has this name.
+  | { status: "taken"; group: GroupRef };
+
+// A group may take the name it has now, or the same name in other letters
+// ("теннис" -> "Теннис"): only another group with the same name is in the way.
+export const renameGroup = safeQuery("renameGroup", async (
+  id: number,
+  name: string,
+): Promise<RenameGroupResult> => {
+  const other = await db
+    .select({ id: groups.id, name: groups.name })
+    .from(groups)
+    .where(
+      and(
+        sql`${groups.id} <> ${id}`,
+        sql`${groupNameKey(groups.name)} = ${groupNameKey(sql`${name}`)}`,
+      ),
+    )
+    .limit(1);
+
+  if (other[0]) {
+    return { status: "taken", group: other[0] };
+  }
+
+  const rows = await db
+    .update(groups)
+    .set({ name })
+    .where(eq(groups.id, id))
+    .returning({ id: groups.id, name: groups.name });
+
+  return rows[0] ? { status: "renamed", group: rows[0] } : { status: "not_found" };
+});
+
+// The rows of `contact_groups` go with the group (on delete cascade); the
+// contacts stay.
+export const deleteGroup = safeQuery("deleteGroup", async (
+  id: number,
+): Promise<GroupRef | undefined> => {
+  const rows = await db
+    .delete(groups)
+    .where(eq(groups.id, id))
+    .returning({ id: groups.id, name: groups.name });
+
+  return rows[0];
+});
+

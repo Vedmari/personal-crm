@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { ContactAvatar } from "@/components/contact-avatar";
+import { ContactGroupsPicker } from "@/components/contact-groups-picker";
 import { DeleteContactButton } from "@/components/delete-contact-button";
 import { DeleteNoteButton } from "@/components/delete-note-button";
 import { EditContactButton } from "@/components/edit-contact-button";
@@ -15,8 +16,15 @@ import {
   DiarySheet,
 } from "@/components/paper";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getContact, getKeepInTouchDue, listNotes } from "@/db/queries";
+import {
+  getContact,
+  getKeepInTouchDue,
+  listContactGroups,
+  listGroups,
+  listNotes,
+} from "@/db/queries";
 import { formatDay, formatNoteDate, pluralize, toTelHref } from "@/lib/format";
+import { listHref } from "@/lib/list-filter";
 import { cn } from "@/lib/utils";
 import { parseId } from "@/lib/validation";
 
@@ -80,10 +88,12 @@ async function ContactCard({
     notFound();
   }
 
-  const [contact, notes, due] = await Promise.all([
+  const [contact, notes, due, contactGroups, allGroups] = await Promise.all([
     getContact(id),
     listNotes(id),
     getKeepInTouchDue(id),
+    listContactGroups(id),
+    listGroups(),
   ]);
 
   if (!contact) {
@@ -174,6 +184,29 @@ async function ContactCard({
                       </span>
                     )
                   ) : null}
+                </DetailRow>
+                {/* Each item is one rule tall, so wrapped lines stay on the rules. */}
+                <DetailRow label="Группы">
+                  <div className="flex flex-wrap items-center gap-x-16">
+                    {contactGroups.length > 0 ? (
+                      contactGroups.map((group) => (
+                        <Link
+                          key={group.id}
+                          href={listHref({ group: group.id })}
+                          className={cn(DETAIL_LINK_CLASS_NAME, "break-all")}
+                        >
+                          {group.name}
+                        </Link>
+                      ))
+                    ) : (
+                      <span className="text-ink-muted">не указано</span>
+                    )}
+                    <ContactGroupsPicker
+                      contactId={contact.id}
+                      groups={allGroups.map(({ id, name }) => ({ id, name }))}
+                      memberIds={contactGroups.map((group) => group.id)}
+                    />
+                  </div>
                 </DetailRow>
               </dl>
             </div>

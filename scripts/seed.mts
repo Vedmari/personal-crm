@@ -1,4 +1,4 @@
-// Fills an empty database with test contacts and notes.
+// Fills an empty database with test contacts, notes and groups.
 // Run with: pnpm db:seed
 //
 // The script only inserts: it never deletes or overwrites data,
@@ -11,7 +11,9 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
 import {
+  contactGroups,
   contacts,
+  groups,
   notes,
   type KeepInTouchInterval,
 } from "../src/db/schema.ts";
@@ -557,6 +559,38 @@ function pickKeepInTouch(): KeepInTouchInterval | null {
   return pickWeighted(KEEP_IN_TOUCH_WEIGHTS, keepInTouchRandom);
 }
 
+// --- Groups: about a third of the contacts are in a group ---
+
+// A generator of its own, for the same reason as the one above.
+const groupsRandom = createRandom(RANDOM_SEED + 2);
+
+const GROUP_NAMES = ["Семья", "Друзья", "Знакомые", "Теннис", "Аналитики"] as const;
+
+const GROUP_SHARE = 1 / 3;
+// Of the contacts that are in a group, this share is in two.
+const SECOND_GROUP_SHARE = 0.25;
+
+// Indexes into GROUP_NAMES: none, one or two different ones.
+function pickGroups(): number[] {
+  if (groupsRandom() >= GROUP_SHARE) {
+    return [];
+  }
+
+  const first = Math.floor(groupsRandom() * GROUP_NAMES.length);
+
+  if (groupsRandom() >= SECOND_GROUP_SHARE) {
+    return [first];
+  }
+
+  let second = Math.floor(groupsRandom() * (GROUP_NAMES.length - 1));
+
+  if (second >= first) {
+    second += 1;
+  }
+
+  return [first, second];
+}
+
 // --- Assembling contacts ---
 
 type SeedContact = {
@@ -666,8 +700,15 @@ async function main(): Promise<void> {
 
     const seedContacts = makeContacts(Date.now());
     let insertedNotes = 0;
+    let insertedMemberships = 0;
 
     await db.transaction(async (tx) => {
+      const insertedGroups = await tx
+        .insert(groups)
+        .values(GROUP_NAMES.map((name) => ({ name })))
+        .returning({ id: groups.id, name: groups.name });
+      const groupIdByName = new Map(insertedGroups.map((row) => [row.name, row.id]));
+
       for (const batch of chunk(seedContacts, 250)) {
         const inserted = await tx
           .insert(contacts)
@@ -689,11 +730,24 @@ async function main(): Promise<void> {
           await tx.insert(notes).values(noteValues);
           insertedNotes += noteValues.length;
         }
+
+        const membershipValues = batch.flatMap((item) =>
+          pickGroups().map((index) => ({
+            contactId: idByName.get(item.contact.name)!,
+            groupId: groupIdByName.get(GROUP_NAMES[index])!,
+          })),
+        );
+
+        if (membershipValues.length > 0) {
+          await tx.insert(contactGroups).values(membershipValues);
+          insertedMemberships += membershipValues.length;
+        }
       }
     });
 
     console.log(
-      `Seed complete: ${seedContacts.length} contacts and ${insertedNotes} notes inserted.`,
+      `Seed complete: ${seedContacts.length} contacts, ${insertedNotes} notes, ` +
+        `${GROUP_NAMES.length} groups with ${insertedMemberships} memberships inserted.`,
     );
   } finally {
     await client.end();

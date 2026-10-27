@@ -6,20 +6,25 @@ import {
   addContactedNote,
   addNote,
   createContact,
+  createGroup,
   deleteContact,
+  deleteGroup,
   deleteNote,
   eraseContactedNote,
   eraseDeletedContact,
   eraseDeletedNote,
   getContact,
   restoreContact,
+  renameGroup,
   restoreNote,
+  setContactGroup,
   setKeepInTouch,
   updateContact,
 } from "@/db/queries";
 import {
   parseContactForm,
   parseId,
+  parseGroupName,
   parseKeepInTouch,
   parseNoteForm,
   parseTimestamp,
@@ -32,6 +37,8 @@ export type ActionResult<Field extends string, Data = undefined> =
   | { ok: false; errors: FieldErrors<Field>; message?: string };
 
 const CONTACT_NOT_FOUND = "Контакт не найден. Обновите страницу.";
+
+const GROUP_NOT_FOUND = "Группа не найдена. Обновите страницу.";
 
 const NOTE_NOT_FOUND = "Заметка не найдена. Обновите страницу.";
 
@@ -116,6 +123,152 @@ export async function setKeepInTouchAction(
   refresh();
 
   return { ok: true, data: undefined };
+}
+
+// Used on the "Группы" page: a name that is taken is an error there, because
+// the aim is a new group.
+export async function createGroupAction(
+  formData: FormData,
+): Promise<ActionResult<"name", { id: number; name: string }>> {
+  const parsed = parseGroupName(formData.get("name"));
+
+  if (!parsed.ok) {
+    return { ok: false, errors: parsed.errors };
+  }
+
+  const { group, created } = await createGroup(parsed.data);
+
+  if (!created) {
+    return {
+      ok: false,
+      errors: { name: `Группа «${group.name}» уже есть` },
+    };
+  }
+
+  refresh();
+
+  return { ok: true, data: group };
+}
+
+// On the "Группы" page. The new name is checked like a new group's, but the
+// group may keep its own name, or change the case of its letters.
+export async function renameGroupAction(
+  groupId: number,
+  formData: FormData,
+): Promise<ActionResult<"name", { id: number; name: string }>> {
+  const id = parseId(groupId);
+
+  if (id === null) {
+    return { ok: false, errors: {}, message: GROUP_NOT_FOUND };
+  }
+
+  const parsed = parseGroupName(formData.get("name"));
+
+  if (!parsed.ok) {
+    return { ok: false, errors: parsed.errors };
+  }
+
+  const result = await renameGroup(id, parsed.data);
+
+  if (result.status === "not_found") {
+    return { ok: false, errors: {}, message: GROUP_NOT_FOUND };
+  }
+
+  if (result.status === "taken") {
+    return {
+      ok: false,
+      errors: { name: `Группа «${result.group.name}» уже есть` },
+    };
+  }
+
+  refresh();
+
+  return { ok: true, data: result.group };
+}
+
+// Deleting a group keeps its contacts. There is no "Вернуть": the dialog that
+// asks first is the protection.
+export async function deleteGroupAction(
+  groupId: number,
+): Promise<ActionResult<never, { id: number; name: string }>> {
+  const id = parseId(groupId);
+  const group = id === null ? undefined : await deleteGroup(id);
+
+  if (!group) {
+    return { ok: false, errors: {}, message: GROUP_NOT_FOUND };
+  }
+
+  refresh();
+
+  return { ok: true, data: group };
+}
+
+// A tick in the group list of the contact card. Saved at once, one group at a
+// time. `member` is true for a tick put, false for a tick removed.
+export async function setContactGroupAction(
+  contactId: number,
+  groupId: number,
+  member: boolean,
+): Promise<ActionResult<never>> {
+  const contact = parseId(contactId);
+  const group = parseId(groupId);
+
+  if (contact === null) {
+    return { ok: false, errors: {}, message: CONTACT_NOT_FOUND };
+  }
+
+  if (group === null) {
+    return { ok: false, errors: {}, message: GROUP_NOT_FOUND };
+  }
+
+  const result = await setContactGroup(contact, group, member === true);
+
+  if (result === "contact_not_found") {
+    return { ok: false, errors: {}, message: CONTACT_NOT_FOUND };
+  }
+
+  if (result === "group_not_found") {
+    return { ok: false, errors: {}, message: GROUP_NOT_FOUND };
+  }
+
+  refresh();
+
+  return { ok: true, data: undefined };
+}
+
+// The "Новая группа" field in the contact card: makes the group and puts the
+// contact into it. A name that is taken is not an error here: the contact goes
+// into the group that has it, because that is what was asked for.
+export async function createGroupForContactAction(
+  contactId: number,
+  formData: FormData,
+): Promise<ActionResult<"name", { id: number; name: string }>> {
+  const contact = parseId(contactId);
+
+  if (contact === null || !(await getContact(contact))) {
+    return { ok: false, errors: {}, message: CONTACT_NOT_FOUND };
+  }
+
+  const parsed = parseGroupName(formData.get("name"));
+
+  if (!parsed.ok) {
+    return { ok: false, errors: parsed.errors };
+  }
+
+  const { group } = await createGroup(parsed.data);
+  const result = await setContactGroup(contact, group.id, true);
+
+  if (result === "contact_not_found") {
+    return { ok: false, errors: {}, message: CONTACT_NOT_FOUND };
+  }
+
+  if (result === "group_not_found") {
+    return { ok: false, errors: {}, message: GROUP_NOT_FOUND };
+  }
+
+  refresh();
+
+  return { ok: true, data: group };
 }
 
 export async function addNoteAction(
