@@ -17,6 +17,7 @@ import {
 import { MOSCOW_TIME_ZONE } from "@/lib/format";
 import type { ContactInput } from "@/lib/validation";
 
+import { safeQuery } from "./errors";
 import { db } from "./index";
 import { contacts, notes, type KeepInTouchInterval } from "./schema";
 
@@ -64,10 +65,10 @@ function contactMatches(search: string): SQL | undefined {
 // the way a phone book does, and treats "ё" as "е".
 const nameInAlphabeticalOrder = sql`${contacts.name} collate "ru-x-icu"`;
 
-export async function listContacts(search: string): Promise<{
+export const listContacts = safeQuery("listContacts", async (search: string): Promise<{
   items: ContactListItem[];
   total: number;
-}> {
+}> => {
   const [items, totals] = await Promise.all([
     db
       .select({
@@ -87,9 +88,9 @@ export async function listContacts(search: string): Promise<{
   ]);
 
   return { items, total: totals[0]?.value ?? 0 };
-}
+});
 
-export async function getContact(id: number) {
+export const getContact = safeQuery("getContact", async (id: number) => {
   const rows = await db
     .select()
     .from(contacts)
@@ -97,35 +98,35 @@ export async function getContact(id: number) {
     .limit(1);
 
   return rows[0];
-}
+});
 
-export async function listNotes(contactId: number) {
+export const listNotes = safeQuery("listNotes", async (contactId: number) => {
   return db
     .select()
     .from(notes)
     .where(and(eq(notes.contactId, contactId), isNull(notes.deletedAt)))
     .orderBy(desc(notes.createdAt), desc(notes.id));
-}
+});
 
-export async function createContact(input: ContactInput) {
+export const createContact = safeQuery("createContact", async (input: ContactInput) => {
   const rows = await db
     .insert(contacts)
     .values(input)
     .returning({ id: contacts.id, name: contacts.name });
 
   return rows[0];
-}
+});
 
 export type UpdateContactResult = "updated" | "changed_elsewhere" | "not_found";
 
 // Saves only if the contact has not been saved since the edit form got its
 // data. Without this check a tab that was opened earlier would silently
 // overwrite newer changes with the old values it still shows.
-export async function updateContact(
+export const updateContact = safeQuery("updateContact", async (
   id: number,
   input: ContactInput,
   expectedUpdatedAt: Date,
-): Promise<UpdateContactResult> {
+): Promise<UpdateContactResult> => {
   const rows = await db
     .update(contacts)
     .set({ ...input, updatedAt: new Date() })
@@ -145,7 +146,7 @@ export async function updateContact(
   }
 
   return (await getContact(id)) ? "changed_elsewhere" : "not_found";
-}
+});
 
 // --- Keep in touch ---
 //
@@ -184,9 +185,9 @@ export type KeepInTouchDue = {
   overdueDays: number;
 };
 
-export async function getKeepInTouchDue(
+export const getKeepInTouchDue = safeQuery("getKeepInTouchDue", async (
   contactId: number,
-): Promise<KeepInTouchDue | undefined> {
+): Promise<KeepInTouchDue | undefined> => {
   const rows = await db
     .select({
       dueDay: sql<string>`${dueDay}::text`,
@@ -203,7 +204,7 @@ export async function getKeepInTouchDue(
     .limit(1);
 
   return rows[0];
-}
+});
 
 export type OverdueContact = {
   id: number;
@@ -215,7 +216,7 @@ export type OverdueContact = {
 };
 
 // Most overdue first; equal ones in the order of the contact list.
-export async function listOverdueContacts(): Promise<OverdueContact[]> {
+export const listOverdueContacts = safeQuery("listOverdueContacts", async (): Promise<OverdueContact[]> => {
   const rows = await db
     .select({
       id: contacts.id,
@@ -238,16 +239,16 @@ export async function listOverdueContacts(): Promise<OverdueContact[]> {
     ...row,
     every: row.every as KeepInTouchInterval,
   }));
-}
+});
 
 // Choosing a different interval restarts the count for a contact without
 // notes; choosing the same one again does not. `updatedAt` stays as it is:
 // it guards the edit form against changes from another tab, and the form
 // does not hold the interval.
-export async function setKeepInTouch(
+export const setKeepInTouch = safeQuery("setKeepInTouch", async (
   id: number,
   every: KeepInTouchInterval | null,
-) {
+) => {
   const rows = await db
     .update(contacts)
     .set({
@@ -266,29 +267,29 @@ export async function setKeepInTouch(
     .returning({ id: contacts.id });
 
   return rows[0];
-}
+});
 
-export async function addNote(contactId: number, body: string) {
+export const addNote = safeQuery("addNote", async (contactId: number, body: string) => {
   const rows = await db
     .insert(notes)
     .values({ contactId, body })
     .returning({ id: notes.id });
 
   return rows[0];
-}
+});
 
 // "Связались" in the "Пора связаться" block is an ordinary note with this
 // text, so the deadline restarts like after any other note.
 const CONTACTED_NOTE = "Связались";
 
-export async function addContactedNote(contactId: number) {
+export const addContactedNote = safeQuery("addContactedNote", async (contactId: number) => {
   return addNote(contactId, CONTACTED_NOTE);
-}
+});
 
 // "Отменить" right after "Связались" erases that note at once: it is ten
 // seconds old and has no "Вернуть" of its own. The text check keeps a stray
 // id from erasing an ordinary note.
-export async function eraseContactedNote(id: number) {
+export const eraseContactedNote = safeQuery("eraseContactedNote", async (id: number) => {
   const rows = await db
     .delete(notes)
     .where(
@@ -301,7 +302,7 @@ export async function eraseContactedNote(id: number) {
     .returning({ id: notes.id });
 
   return rows[0];
-}
+});
 
 // Deleting only marks a row (`deletedAt`). The row is erased when the
 // "Вернуть" toast closes. If the tab was closed before that, the row is
@@ -317,7 +318,7 @@ async function eraseExpiredDeletions() {
   await db.delete(contacts).where(lt(contacts.deletedAt, expired));
 }
 
-export async function deleteContact(id: number) {
+export const deleteContact = safeQuery("deleteContact", async (id: number) => {
   await eraseExpiredDeletions();
 
   const rows = await db
@@ -327,9 +328,9 @@ export async function deleteContact(id: number) {
     .returning({ id: contacts.id, name: contacts.name });
 
   return rows[0];
-}
+});
 
-export async function restoreContact(id: number) {
+export const restoreContact = safeQuery("restoreContact", async (id: number) => {
   const rows = await db
     .update(contacts)
     .set({ deletedAt: null })
@@ -337,17 +338,17 @@ export async function restoreContact(id: number) {
     .returning({ id: contacts.id, name: contacts.name });
 
   return rows[0];
-}
+});
 
 // Only a contact marked as deleted can be erased, so a stray call
 // cannot wipe out a contact that is in use.
-export async function eraseDeletedContact(id: number) {
+export const eraseDeletedContact = safeQuery("eraseDeletedContact", async (id: number) => {
   await db
     .delete(contacts)
     .where(and(eq(contacts.id, id), isNotNull(contacts.deletedAt)));
-}
+});
 
-export async function deleteNote(id: number) {
+export const deleteNote = safeQuery("deleteNote", async (id: number) => {
   await eraseExpiredDeletions();
 
   const rows = await db
@@ -357,9 +358,9 @@ export async function deleteNote(id: number) {
     .returning({ id: notes.id });
 
   return rows[0];
-}
+});
 
-export async function restoreNote(id: number) {
+export const restoreNote = safeQuery("restoreNote", async (id: number) => {
   const rows = await db
     .update(notes)
     .set({ deletedAt: null })
@@ -367,10 +368,10 @@ export async function restoreNote(id: number) {
     .returning({ id: notes.id });
 
   return rows[0];
-}
+});
 
-export async function eraseDeletedNote(id: number) {
+export const eraseDeletedNote = safeQuery("eraseDeletedNote", async (id: number) => {
   await db
     .delete(notes)
     .where(and(eq(notes.id, id), isNotNull(notes.deletedAt)));
-}
+});
