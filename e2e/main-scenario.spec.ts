@@ -3,7 +3,8 @@
 
 import { expect, test, type Page } from "@playwright/test";
 
-import { SEEDED_CONTACTS } from "./database";
+import { resetDatabase, SEEDED_CONTACTS } from "./database";
+import { currentPage, notesSection, toast } from "./locators";
 
 const NEW_CONTACT = { name: "Анна Смирнова", about: "Тренер по теннису" };
 const NOTE = "Созвонились: в субботу играем в теннис на Соколе";
@@ -12,19 +13,11 @@ const ALL_NAMES = [NEW_CONTACT, ...SEEDED_CONTACTS].map(
   (contact) => contact.name,
 );
 
-// Next keeps the previous page hidden in the DOM after a navigation, so there
-// can be two <main>; the visible one is the current page.
-function currentPage(page: Page) {
-  return page.locator("main:visible");
-}
-
 function contactLink(page: Page, name: string) {
   return currentPage(page).getByRole("link", { name: new RegExp(name) });
 }
 
-function notesSection(page: Page) {
-  return page.locator("section[aria-labelledby=notes-heading]");
-}
+test.beforeEach(() => resetDatabase());
 
 test("a contact added, found and noted keeps the note for every browser [Главный сценарий]", async ({
   page,
@@ -74,11 +67,7 @@ test("a contact added, found and noted keeps the note for every browser [Гла�
     await notes.getByLabel("Новая заметка").fill(NOTE);
     await notes.getByRole("button", { name: "Добавить заметку" }).click();
 
-    await expect(
-      page
-        .locator("[data-sonner-toast]")
-        .filter({ hasText: "Заметка сохранена" }),
-    ).toBeVisible();
+    await expect(toast(page, "Заметка сохранена")).toBeVisible();
     await expect(
       notes.locator("ol > li").filter({ hasText: NOTE }),
     ).toBeVisible();

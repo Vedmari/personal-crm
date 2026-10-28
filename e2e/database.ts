@@ -2,10 +2,16 @@
 // the working one in the same PostgreSQL (see test/database.ts). The app under
 // test is started with this address, so the working contacts are not touched.
 
-import { assertSafeTestDatabase, toE2eDatabaseUrl } from "../test/database";
+import postgres, { type Sql } from "postgres";
 
-// The people who are already in the book when the tests start
-// (e2e/global-setup.ts puts them there).
+import {
+  assertSafeTestDatabase,
+  databaseNameOf,
+  toE2eDatabaseUrl,
+} from "../test/database";
+
+// The people who are already in the book when a test starts
+// (resetDatabase puts them there).
 export const SEEDED_CONTACTS = [
   { name: "Борис Петров", about: "Сосед по даче" },
   { name: "Вера Соколова", about: "Коллега по работе" },
@@ -42,4 +48,41 @@ export function e2eDatabaseUrl(): string {
   assertSafeTestDatabase(e2eUrl, workingUrl);
 
   return e2eUrl;
+}
+
+// Every test starts from the same book: only SEEDED_CONTACTS, then whatever
+// `fill` adds. The app under test reads the database on every request, so it
+// sees the new rows at once.
+export async function resetDatabase(
+  fill?: (sql: Sql) => Promise<void>,
+): Promise<void> {
+  const url = e2eDatabaseUrl();
+  const sql = postgres(url, { max: 1, onnotice: () => {} });
+
+  try {
+    const [{ name }] = await sql<
+      { name: string }[]
+    >`select current_database() as name`;
+
+    if (!name.endsWith("_e2e_test") || name !== databaseNameOf(url)) {
+      throw new Error(
+        `Refusing to empty "${name}": it is not the e2e database.`,
+      );
+    }
+
+    const tables = await sql<{ name: string }[]>`
+      select quote_ident(tablename) as name from pg_tables where schemaname = 'public'
+    `;
+
+    if (tables.length > 0) {
+      await sql.unsafe(
+        `truncate table ${tables.map((table) => table.name).join(", ")} restart identity cascade`,
+      );
+    }
+
+    await sql`insert into contacts ${sql(SEEDED_CONTACTS, "name", "about")}`;
+    await fill?.(sql);
+  } finally {
+    await sql.end();
+  }
 }

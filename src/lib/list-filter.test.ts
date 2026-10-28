@@ -100,7 +100,7 @@ describe("parseListParams", () => {
 describe("showsKeepInTouch", () => {
   const group = { id: 5, name: "Теннис" };
 
-  it("shows the block on the plain list [Никто не просрочен]", () => {
+  it("shows the block on the plain list", () => {
     expect(showsKeepInTouch({ search: "", group: null })).toBe(true);
   });
 
