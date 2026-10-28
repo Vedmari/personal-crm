@@ -6,7 +6,12 @@ import { ShowMoreLink } from "@/components/show-more-link";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listContacts, type ContactListItem } from "@/db/queries";
 import { formatCount, getGroupLetter, pluralize } from "@/lib/format";
-import { LIST_PAGE_SIZE, listHref, parseShown } from "@/lib/list-filter";
+import {
+  letterAnchor,
+  LIST_PAGE_SIZE,
+  listHref,
+  parseShown,
+} from "@/lib/list-filter";
 import { readListFilter } from "@/lib/read-list-filter";
 
 const CONTACT_FORMS = ["контакт", "контакта", "контактов"] as const;
@@ -170,11 +175,13 @@ export async function ContactList({
       {groupByLetter(items).map((group) => (
         // The letter is a margin mark: on phones it hangs in the right margin
         // (-mr-56 reaches over the sheet padding), on desktop it stands left
-        // of the names (-ml-48). It sticks under the 64px search bar.
+        // of the names (-ml-48). It sticks under the 64px search bar, and an
+        // alphabet tab scrolls the section to just below the bar (scroll-mt).
         <section
           key={group.letter}
+          id={letterAnchor(group.letter)}
           aria-label={`Контакты на букву ${group.letter}`}
-          className="-mr-56 grid grid-cols-[minmax(0,1fr)_var(--spacing-row)] gap-x-24 md:-ml-48 md:mr-0 md:grid-cols-[var(--spacing-row)_minmax(0,1fr)] md:gap-x-16"
+          className="-mr-56 grid scroll-mt-74 grid-cols-[minmax(0,1fr)_var(--spacing-row)] gap-x-24 md:-ml-48 md:mr-0 md:grid-cols-[var(--spacing-row)_minmax(0,1fr)] md:gap-x-16"
         >
           <h2
             aria-hidden="true"

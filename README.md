@@ -163,7 +163,7 @@ ssh crm bash /opt/crm/prod/deploy/seed.sh
 | `pnpm format` | Привести код к единому виду (Prettier). Запускать перед коммитом: CI проверяет формат |
 | `pnpm format:check` | Только проверить формат, ничего не меняя |
 | `pnpm test` | Автотесты (Vitest). Нужен запущенный Podman: тесты сами создают тестовую базу, см. ниже |
-| `pnpm test:e2e` | Сквозные тесты в браузере (Playwright): собирают приложение и проходят главный сценарий, основные пути «Пора связаться», список порциями и ежедневник (обложка, закладка, чернила, перелистывание) в Chrome. Нужны запущенный Podman и установленный Google Chrome, см. ниже |
+| `pnpm test:e2e` | Сквозные тесты в браузере (Playwright): собирают приложение и проходят главный сценарий, основные пути «Пора связаться», список порциями, алфавитные вырубки и ежедневник (обложка, закладка, чернила, перелистывание) в Chrome. Нужны запущенный Podman и установленный Google Chrome, см. ниже |
 | `pnpm typecheck` | Проверка типов |
 | `pnpm db:generate` | Создать миграцию после изменения схемы в `src/db/schema.ts` |
 | `pnpm db:migrate` | Применить миграции к базе |
@@ -238,7 +238,7 @@ openspec config set telemetry.enabled false
 - `src/db` — схема таблиц (`schema.ts`), подключение и запросы к базе. С базой работает только сервер, браузер к ней не обращается. Срок «Пора связаться» для карточки и блока считает один SQL-фрагмент в `queries.ts`. Группы — таблицы `groups` и `contact_groups` (кто в какой группе)
 - `src/app/groups/page.tsx` — страница «Группы»; ряд кнопок-фильтров на главной — `group-filter.tsx`, выбор групп в карточке — `contact-groups-picker.tsx`. Все ссылки на список (поиск, группа и сколько показано — в адресе) собирает `listHref` в `src/lib/list-filter.ts`, кнопка «Показать ещё» — `show-more-link.tsx`
 - `*.test.ts` рядом с кодом — тесты чистых функций, `*.db.test.ts` — тесты запросов и серверных действий на тестовой базе; общее для них — в `test/`, настройки — `vitest.config.mts`
-- `e2e` — сквозные тесты в браузере: главный сценарий — `main-scenario.spec.ts`, «Пора связаться» — `keep-in-touch.spec.ts`, список порциями — `pagination.spec.ts`, ежедневник — `notebook.spec.ts`, подготовка базы — `global-setup.ts` и `resetDatabase` в `database.ts`; настройки — `playwright.config.ts`
+- `e2e` — сквозные тесты в браузере: главный сценарий — `main-scenario.spec.ts`, «Пора связаться» — `keep-in-touch.spec.ts`, список порциями — `pagination.spec.ts`, ежедневник — `notebook.spec.ts`, вырубки — `alphabet-tabs.spec.ts`, подготовка базы — `global-setup.ts` и `resetDatabase` в `database.ts`; настройки — `playwright.config.ts`
 - `drizzle` — миграции базы
 - `src/app/health/route.ts` — адрес `/health` для проверки после выкатки: 200, если приложение работает и видит базу
 - `scripts/seed.mts` — генератор тестовых данных

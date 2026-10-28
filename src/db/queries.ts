@@ -15,7 +15,7 @@ import {
   type SQLWrapper,
 } from "drizzle-orm";
 
-import { MOSCOW_TIME_ZONE } from "@/lib/format";
+import { getGroupLetter, MOSCOW_TIME_ZONE } from "@/lib/format";
 import { LIST_PAGE_SIZE } from "@/lib/list-filter";
 import type { ContactInput } from "@/lib/validation";
 
@@ -129,6 +129,42 @@ export const listContacts = safeQuery(
       matched: matchedTotals === null ? total : (matchedTotals[0]?.value ?? 0),
       total,
     };
+  },
+);
+
+// The letters of the alphabet tabs: every letter the list has, with the place
+// of its first contact (the first one is 1), for the same search and group as
+// the list. Letters come from getGroupLetter, the same as the letter marks of
+// the list, so «Ё» goes with «Е» and names that start with no letter go under
+// «#». Only the names are read, in the order of the list.
+export const listLetters = safeQuery(
+  "listLetters",
+  async (
+    search: string,
+    groupId: number | null = null,
+  ): Promise<{ letter: string; position: number }[]> => {
+    const rows = await db
+      .select({ name: contacts.name })
+      .from(contacts)
+      .where(
+        and(
+          isNull(contacts.deletedAt),
+          groupId === null ? undefined : inGroup(groupId),
+          contactMatches(search),
+        ),
+      )
+      .orderBy(nameInAlphabeticalOrder, asc(contacts.id));
+    const letters: { letter: string; position: number }[] = [];
+
+    rows.forEach((row, index) => {
+      const letter = getGroupLetter(row.name);
+
+      if (letters[letters.length - 1]?.letter !== letter) {
+        letters.push({ letter, position: index + 1 });
+      }
+    });
+
+    return letters;
   },
 );
 

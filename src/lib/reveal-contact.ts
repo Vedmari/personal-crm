@@ -1,6 +1,12 @@
 import type { useRouter } from "next/navigation";
 
-import { LIST_PAGE_SIZE, listHref, parseShown, shownFor } from "./list-filter";
+import {
+  letterAnchor,
+  LIST_PAGE_SIZE,
+  listHref,
+  parseShown,
+  shownFor,
+} from "./list-filter";
 
 const WAIT_FOR_ROW_MS = 5000;
 const SCROLL_SETTLE_MS = 1500;
@@ -58,6 +64,32 @@ export function revealContact(id: number): void {
 
     window.addEventListener("scrollend", settle);
     window.setTimeout(settle, SCROLL_SETTLE_MS);
+  };
+
+  requestAnimationFrame(tryReveal);
+}
+
+// Scrolls the list to the section of a letter, just below the search bar
+// (scroll-mt of the section). After an alphabet tab the longer list may still
+// be on its way, so this keeps looking for a while. Next.js keeps the previous
+// page hidden in the DOM: only a visible section counts.
+export function revealLetter(letter: string): void {
+  const deadline = performance.now() + WAIT_FOR_ROW_MS;
+  const selector = `[id="${CSS.escape(letterAnchor(letter))}"]`;
+
+  const tryReveal = () => {
+    const section = [...document.querySelectorAll<HTMLElement>(selector)].find(
+      (element) => element.offsetParent !== null,
+    );
+
+    if (!section) {
+      if (performance.now() < deadline) {
+        requestAnimationFrame(tryReveal);
+      }
+      return;
+    }
+
+    section.scrollIntoView({ block: "start", behavior: "auto" });
   };
 
   requestAnimationFrame(tryReveal);

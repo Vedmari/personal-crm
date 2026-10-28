@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 
 import { AddContactButton } from "@/components/add-contact-button";
+import { AlphabetTabs } from "@/components/alphabet-tabs";
 import { ContactList, ContactListSkeleton } from "@/components/contact-list";
 import { GroupFilter } from "@/components/group-filter";
 import { KeepInTouchBlock } from "@/components/keep-in-touch-block";
@@ -14,6 +15,9 @@ export default function HomePage(props: PageProps<"/">) {
   return (
     <Cover>
       <DiarySheet>
+        <Suspense fallback={null}>
+          <AlphabetTabs searchParams={props.searchParams} />
+        </Suspense>
         <div className={cn(DIARY_SHEET_X, "pt-42 pb-22")}>
           <Logo />
           <div className="mt-row flex max-w-960 items-start justify-between gap-16">
