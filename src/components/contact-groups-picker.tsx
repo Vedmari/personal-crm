@@ -11,7 +11,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 type GroupOption = { id: number; name: string };
 
@@ -157,7 +161,10 @@ export function ContactGroupsPicker({
           </Button>
         </form>
         {error ? (
-          <p role="alert" className="mt-8 px-4 font-sans text-body text-destructive">
+          <p
+            role="alert"
+            className="mt-8 px-4 font-sans text-body text-destructive"
+          >
             {error}
           </p>
         ) : null}

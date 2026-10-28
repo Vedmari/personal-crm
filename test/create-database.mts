@@ -22,7 +22,9 @@ const name = decodeURIComponent(target.pathname.replace(/^\//, ""));
 // A database name cannot be a query parameter, so it is checked to hold only
 // letters, digits and underscores before it is put into the statement.
 if (!/^[A-Za-z0-9_]+_test$/.test(name)) {
-  console.error(`Refusing to create "${name}": not a plain *_test database name.`);
+  console.error(
+    `Refusing to create "${name}": not a plain *_test database name.`,
+  );
   process.exit(1);
 }
 
@@ -35,7 +37,8 @@ const admin = postgres(target.toString(), {
 });
 
 try {
-  const existing = await admin`select 1 from pg_database where datname = ${name}`;
+  const existing =
+    await admin`select 1 from pg_database where datname = ${name}`;
 
   if (existing.length === 0) {
     await admin.unsafe(`create database "${name}"`);

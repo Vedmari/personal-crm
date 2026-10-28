@@ -133,7 +133,9 @@ export function GroupRow({
           <span className="sr-only"> группу «{name}»</span>
         </Button>
         <ConfirmDelete
-          trigger={<Button variant="outline" className="max-md:size-40 max-md:p-0" />}
+          trigger={
+            <Button variant="outline" className="max-md:size-40 max-md:p-0" />
+          }
           title="Удалить группу?"
           description={`Группа «${name}» пропадёт. Контакты из неё останутся в списке.`}
           action={() => deleteGroupAction(id)}

@@ -14,8 +14,7 @@ export type ContactField = keyof ContactInput;
 export type FieldErrors<Field extends string> = Partial<Record<Field, string>>;
 
 export type ParseResult<Data, Field extends string> =
-  | { ok: true; data: Data }
-  | { ok: false; errors: FieldErrors<Field> };
+  { ok: true; data: Data } | { ok: false; errors: FieldErrors<Field> };
 
 export const CONTACT_LIMITS: Record<ContactField, number> = {
   name: 200,
@@ -49,7 +48,8 @@ export function parseContactForm(
 
   for (const field of CONTACT_FIELDS) {
     if (data[field].length > CONTACT_LIMITS[field]) {
-      errors[field] = `Слишком длинно: не больше ${CONTACT_LIMITS[field]} символов`;
+      errors[field] =
+        `Слишком длинно: не больше ${CONTACT_LIMITS[field]} символов`;
     }
   }
 

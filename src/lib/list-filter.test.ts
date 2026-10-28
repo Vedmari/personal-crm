@@ -119,6 +119,8 @@ describe("showsKeepInTouch", () => {
   it("brings the block back after «Все» and a cleared search [Выбрана группа]", () => {
     const afterAll = parseListParams({});
 
-    expect(showsKeepInTouch({ search: afterAll.search, group: null })).toBe(true);
+    expect(showsKeepInTouch({ search: afterAll.search, group: null })).toBe(
+      true,
+    );
   });
 });

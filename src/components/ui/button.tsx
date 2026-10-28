@@ -1,6 +1,6 @@
-import { Button as ButtonPrimitive } from "@base-ui/react/button"
-import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "@/lib/utils"
+import { Button as ButtonPrimitive } from "@base-ui/react/button";
+import { cva, type VariantProps } from "class-variance-authority";
+import { cn } from "@/lib/utils";
 
 // Pill buttons in the style of the landing's "Открыть приложение".
 const buttonVariants = cva(
@@ -30,8 +30,8 @@ const buttonVariants = cva(
       variant: "default",
       size: "default",
     },
-  }
-)
+  },
+);
 
 function Button({
   className,
@@ -45,7 +45,7 @@ function Button({
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />
-  )
+  );
 }
 
 // The light circle at the end of the landing CTA, holding an arrow or an icon.
@@ -57,11 +57,11 @@ function ButtonDot({ className, ...props }: React.ComponentProps<"span">) {
       aria-hidden="true"
       className={cn(
         "-mr-12 flex size-36 shrink-0 items-center justify-center rounded-full bg-btn-dot text-arrow font-normal text-ink-strong",
-        className
+        className,
       )}
       {...props}
     />
-  )
+  );
 }
 
-export { Button, ButtonDot, buttonVariants }
+export { Button, ButtonDot, buttonVariants };

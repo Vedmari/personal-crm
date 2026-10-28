@@ -18,10 +18,14 @@ const sql = postgres(testUrl, { max: 1, onnotice: () => {} });
 
 // Every test starts with empty tables and ids that count from 1 again.
 beforeEach(async () => {
-  const [{ name }] = await sql<{ name: string }[]>`select current_database() as name`;
+  const [{ name }] = await sql<
+    { name: string }[]
+  >`select current_database() as name`;
 
   if (!name.endsWith("_test") || name !== databaseNameOf(testUrl)) {
-    throw new Error(`Refusing to empty "${name}": it is not the test database.`);
+    throw new Error(
+      `Refusing to empty "${name}": it is not the test database.`,
+    );
   }
 
   const tables = await sql<{ name: string }[]>`

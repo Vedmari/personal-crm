@@ -14,8 +14,7 @@ const CHIP_CLASS_NAME =
 const CHIP_IDLE_CLASS_NAME =
   "border-paper-edge-deep bg-paper-grid text-ink-strong hover:border-ink-muted";
 
-const CHIP_CHOSEN_CLASS_NAME =
-  "border-ink-strong bg-ink-strong text-btn-text";
+const CHIP_CHOSEN_CLASS_NAME = "border-ink-strong bg-ink-strong text-btn-text";
 
 // The row under the search bar: "Все" and the groups with their sizes. A chip
 // is a link, so the chosen group lives in the address, and choosing one keeps

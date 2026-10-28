@@ -106,7 +106,8 @@ export const contactGroups = pgTable(
   ],
 );
 
-export type KeepInTouchInterval = (typeof keepInTouchInterval.enumValues)[number];
+export type KeepInTouchInterval =
+  (typeof keepInTouchInterval.enumValues)[number];
 export type Contact = typeof contacts.$inferSelect;
 export type Note = typeof notes.$inferSelect;
 export type Group = typeof groups.$inferSelect;

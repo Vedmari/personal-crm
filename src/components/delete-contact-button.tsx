@@ -61,7 +61,9 @@ export function DeleteContactButton({
   return (
     <ConfirmDelete
       // On phones only the bin is shown, like the pencil next to it.
-      trigger={<Button variant="outline" className="max-md:size-40 max-md:p-0" />}
+      trigger={
+        <Button variant="outline" className="max-md:size-40 max-md:p-0" />
+      }
       title="Удалить контакт?"
       description={`Контакт «${name}» пропадёт вместе со всеми заметками.`}
       action={() => deleteContactAction(contactId)}

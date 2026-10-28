@@ -2,11 +2,7 @@ import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 
 import { db } from "@/db";
-import {
-  listContactGroups,
-  listContacts,
-  listGroups,
-} from "@/db/queries";
+import { listContactGroups, listContacts, listGroups } from "@/db/queries";
 import { contactGroups, groups } from "@/db/schema";
 
 import { createTestContact, formOf } from "../../test/factories";
@@ -19,7 +15,10 @@ import {
 
 const GROUP_NOT_FOUND = "Группа не найдена. Обновите страницу.";
 
-async function makeGroup(name: string, members: string[] = []): Promise<number> {
+async function makeGroup(
+  name: string,
+  members: string[] = [],
+): Promise<number> {
   const result = await createGroupAction(formOf({ name }));
 
   if (!result.ok) {
@@ -94,7 +93,10 @@ describe("renameGroupAction", () => {
       ok: false,
       errors: { name: "Группа «Друзья» уже есть" },
     });
-    expect((await summary()).map(([name]) => name)).toEqual(["Друзья", "Приятели"]);
+    expect((await summary()).map(([name]) => name)).toEqual([
+      "Друзья",
+      "Приятели",
+    ]);
   });
 
   it("lets a group change only the case of its name [Сменить только регистр]", async () => {
@@ -117,7 +119,9 @@ describe("renameGroupAction", () => {
   it("accepts the name the group already has", async () => {
     const id = await makeGroup("Теннис");
 
-    expect((await renameGroupAction(id, formOf({ name: "Теннис" }))).ok).toBe(true);
+    expect((await renameGroupAction(id, formOf({ name: "Теннис" }))).ok).toBe(
+      true,
+    );
   });
 
   it("says the group is gone when it was deleted in another tab [Группу удалили в другой вкладке]", async () => {
@@ -159,9 +163,9 @@ describe("deleteGroupAction", () => {
     expect((await listContactGroups(anna)).map((group) => group.name)).toEqual([
       "Друзья",
     ]);
-    expect((await listContacts("", null)).items.map((item) => item.name)).toEqual([
-      "Анна",
-    ]);
+    expect(
+      (await listContacts("", null)).items.map((item) => item.name),
+    ).toEqual(["Анна"]);
   });
 
   it("leaves every contact of the group in the book", async () => {

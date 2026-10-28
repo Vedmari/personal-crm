@@ -45,7 +45,11 @@ export function GroupCreateForm() {
 
   return (
     <div>
-      <form onSubmit={handleSubmit} noValidate className="flex h-64 items-center gap-12">
+      <form
+        onSubmit={handleSubmit}
+        noValidate
+        className="flex h-64 items-center gap-12"
+      >
         <Input
           name="name"
           autoComplete="off"

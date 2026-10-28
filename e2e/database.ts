@@ -2,10 +2,7 @@
 // the working one in the same PostgreSQL (see test/database.ts). The app under
 // test is started with this address, so the working contacts are not touched.
 
-import {
-  assertSafeTestDatabase,
-  toE2eDatabaseUrl,
-} from "../test/database";
+import { assertSafeTestDatabase, toE2eDatabaseUrl } from "../test/database";
 
 // The people who are already in the book when the tests start
 // (e2e/global-setup.ts puts them there).
@@ -19,7 +16,11 @@ function loadEnvFile(): void {
     // Does not override variables that are already set (CI sets them itself).
     process.loadEnvFile(".env");
   } catch (error) {
-    if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) {
+    if (!(
+      error instanceof Error &&
+      "code" in error &&
+      error.code === "ENOENT"
+    )) {
       throw error;
     }
   }

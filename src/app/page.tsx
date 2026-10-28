@@ -29,7 +29,12 @@ export default function HomePage(props: PageProps<"/">) {
         </div>
         {/* Two rules tall. Its height (h-64) is what the sticky letters
             of the list and src/lib/reveal-contact.ts count from. */}
-        <header className={cn(DIARY_SHEET_X, "sticky top-0 z-10 bg-paper paper-diary")}>
+        <header
+          className={cn(
+            DIARY_SHEET_X,
+            "sticky top-0 z-10 bg-paper paper-diary",
+          )}
+        >
           <div className="flex h-64 max-w-960 items-center">
             <div className="min-w-0 flex-1">
               <Suspense fallback={<SearchBoxFallback />}>
@@ -41,7 +46,9 @@ export default function HomePage(props: PageProps<"/">) {
         <main className={cn(DIARY_SHEET_X, "pt-10 pb-38")}>
           <div className="max-w-960">
             {/* One rule tall while the groups load: the usual height of the row. */}
-            <Suspense fallback={<div aria-hidden="true" className="mb-row h-row" />}>
+            <Suspense
+              fallback={<div aria-hidden="true" className="mb-row h-row" />}
+            >
               <GroupFilter searchParams={props.searchParams} />
             </Suspense>
             {/* Below the search bar, not above it: the block goes away when

@@ -69,7 +69,8 @@
     repeating-linear-gradient(
       180deg,
       transparent 0 calc(var(--paper-rule-step) - 1px),
-      var(--color-rule) calc(var(--paper-rule-step) - 1px) var(--paper-rule-step)
+      var(--color-rule) calc(var(--paper-rule-step) - 1px)
+        var(--paper-rule-step)
     );
   background-size:
     var(--paper-grain-size) var(--paper-grain-size),
@@ -92,7 +93,8 @@
     repeating-linear-gradient(
       180deg,
       transparent 0 calc(var(--paper-rule-step) - 1px),
-      var(--color-rule) calc(var(--paper-rule-step) - 1px) var(--paper-rule-step)
+      var(--color-rule) calc(var(--paper-rule-step) - 1px)
+        var(--paper-rule-step)
     );
   background-size:
     var(--paper-grain-size) var(--paper-grain-size),

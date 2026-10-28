@@ -8,7 +8,9 @@ import { SEEDED_CONTACTS } from "./database";
 const NEW_CONTACT = { name: "Анна Смирнова", about: "Тренер по теннису" };
 const NOTE = "Созвонились: в субботу играем в теннис на Соколе";
 
-const ALL_NAMES = [NEW_CONTACT, ...SEEDED_CONTACTS].map((contact) => contact.name);
+const ALL_NAMES = [NEW_CONTACT, ...SEEDED_CONTACTS].map(
+  (contact) => contact.name,
+);
 
 // Next keeps the previous page hidden in the DOM after a navigation, so there
 // can be two <main>; the visible one is the current page.
@@ -73,9 +75,13 @@ test("a contact added, found and noted keeps the note for every browser [Гла�
     await notes.getByRole("button", { name: "Добавить заметку" }).click();
 
     await expect(
-      page.locator("[data-sonner-toast]").filter({ hasText: "Заметка сохранена" }),
+      page
+        .locator("[data-sonner-toast]")
+        .filter({ hasText: "Заметка сохранена" }),
     ).toBeVisible();
-    await expect(notes.locator("ol > li").filter({ hasText: NOTE })).toBeVisible();
+    await expect(
+      notes.locator("ol > li").filter({ hasText: NOTE }),
+    ).toBeVisible();
   });
 
   await test.step("reload: the note is saved in the card", async () => {

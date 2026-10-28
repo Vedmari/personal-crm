@@ -118,7 +118,10 @@ describe("listGroups", () => {
     ]);
 
     expect(
-      (await listGroups()).map(({ name, contactCount }) => [name, contactCount]),
+      (await listGroups()).map(({ name, contactCount }) => [
+        name,
+        contactCount,
+      ]),
     ).toEqual([
       ["Аналитики", 0],
       ["Друзья", 1],

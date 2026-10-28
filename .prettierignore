@@ -1,0 +1,14 @@
+# Generated or managed by tools: formatting them would only add noise
+pnpm-lock.yaml
+drizzle/
+.claude/
+openspec/
+
+# Documents are written by hand, not formatted as code
+*.md
+
+# Local only, not in git
+backups/
+test-results/
+playwright-report/
+.mcp/

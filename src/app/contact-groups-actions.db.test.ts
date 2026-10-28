@@ -148,7 +148,13 @@ describe("setContactGroupAction", () => {
   it("says the contact is gone for an id that is not one", async () => {
     const tennis = await makeGroup("Теннис");
 
-    for (const contactId of [999, -1, 0, Number.NaN, "x" as unknown as number]) {
+    for (const contactId of [
+      999,
+      -1,
+      0,
+      Number.NaN,
+      "x" as unknown as number,
+    ]) {
       expect(await setContactGroupAction(contactId, tennis, true)).toEqual({
         ok: false,
         errors: {},
@@ -282,7 +288,10 @@ describe("createGroupForContactAction", () => {
   it("says the contact is gone for an id that is not one", async () => {
     for (const contactId of [999, -1, "x" as unknown as number]) {
       expect(
-        await createGroupForContactAction(contactId, formOf({ name: "Теннис" })),
+        await createGroupForContactAction(
+          contactId,
+          formOf({ name: "Теннис" }),
+        ),
       ).toEqual({ ok: false, errors: {}, message: CONTACT_NOT_FOUND });
     }
 

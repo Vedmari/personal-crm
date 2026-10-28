@@ -149,7 +149,10 @@ async function ContactCard({
                   {contact.phone ? (
                     <a
                       href={toTelHref(contact.phone)}
-                      className={cn(DETAIL_LINK_CLASS_NAME, "lining-nums tabular-nums")}
+                      className={cn(
+                        DETAIL_LINK_CLASS_NAME,
+                        "lining-nums tabular-nums",
+                      )}
                     >
                       {contact.phone}
                     </a>
@@ -261,8 +264,8 @@ async function ContactCard({
 
           {notes.length === 0 ? (
             <p className="mt-42 font-sans text-body text-pretty text-ink-muted md:text-body-md">
-              Заметок пока нет. Запишите, о чём говорили, — всё останется в
-              этой карточке.
+              Заметок пока нет. Запишите, о чём говорили, — всё останется в этой
+              карточке.
             </p>
           ) : (
             <ol className="mt-42 flex flex-col gap-row">

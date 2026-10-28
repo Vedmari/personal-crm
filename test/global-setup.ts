@@ -5,10 +5,7 @@ import { execFileSync } from "node:child_process";
 
 import type { TestProject } from "vitest/node";
 
-import {
-  assertSafeTestDatabase,
-  toTestDatabaseUrl,
-} from "./database";
+import { assertSafeTestDatabase, toTestDatabaseUrl } from "./database";
 
 declare module "vitest" {
   export interface ProvidedContext {
@@ -21,7 +18,11 @@ function loadEnvFile(): void {
     // Does not override variables that are already set (CI sets them itself).
     process.loadEnvFile(".env");
   } catch (error) {
-    if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) {
+    if (!(
+      error instanceof Error &&
+      "code" in error &&
+      error.code === "ENOENT"
+    )) {
       throw error;
     }
   }
@@ -42,7 +43,9 @@ function runScript(script: string, testUrl: string): void {
       error instanceof Error && "stderr" in error ? String(error.stderr) : "";
     const reason = stderr.trim().split("\n").slice(0, 3).join("\n");
 
-    throw new Error(`Preparing the test database failed (${script}):\n${reason}`);
+    throw new Error(
+      `Preparing the test database failed (${script}):\n${reason}`,
+    );
   }
 }
 

@@ -7,10 +7,7 @@ import { cn } from "@/lib/utils";
 
 // The cover the sheets lie on. Clips sideways instead of hiding overflow,
 // so sticky parts of a sheet keep sticking to the window.
-export function Cover({
-  className,
-  ...props
-}: React.ComponentProps<"div">) {
+export function Cover({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       className={cn(
@@ -58,7 +55,10 @@ export function Logo() {
       href="/"
       className="flex h-row w-fit items-baseline gap-8 rounded-sm focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-ring md:gap-10"
     >
-      <span aria-hidden="true" className="relative top-3 size-20 flex-none md:size-22">
+      <span
+        aria-hidden="true"
+        className="relative top-3 size-20 flex-none md:size-22"
+      >
         <span className="absolute top-0 left-1/4 size-1/2 rounded-full bg-book-cover" />
         <span className="absolute top-1/2 left-1/4 size-1/2 rounded-full bg-book-cover" />
         <span className="absolute top-1/4 left-0 size-1/2 rounded-full bg-book-cover" />

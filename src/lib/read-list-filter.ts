@@ -20,7 +20,8 @@ export const readListFilter = cache(
     searchParams: Promise<Record<string, string | string[] | undefined>>,
   ): Promise<ListFilter> => {
     const { search, groupId } = parseListParams(await searchParams);
-    const group = groupId === null ? null : ((await findGroup(groupId)) ?? null);
+    const group =
+      groupId === null ? null : ((await findGroup(groupId)) ?? null);
 
     return { search, group };
   },
