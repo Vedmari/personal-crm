@@ -7,6 +7,11 @@
 @theme static {
   /* Colors */
   --color-book-cover: #3f5a3a; /* "cover" in the README; bg-cover is taken by Tailwind */
+  --color-gilt: #d2b46a; /* gold tooling on the baize and the notebook cover */
+  --color-leather: #2c4129; /* leather of the closed notebook, darker than the baize */
+  --color-leather-spine: rgba(0, 0, 0, 0.35);
+  --color-leather-spine-fade: rgba(0, 0, 0, 0.12);
+  --color-emboss: #000; /* the lattice pressed into the leather; the mask sets how dark */
   --color-ink: #2b3527;
   --color-ink-strong: #2f3a2a;
   --color-ink-body: #45503d;
@@ -142,6 +147,10 @@
 /* Paper geometry: grain tile, rule steps, margin lines, spine and holes */
 :root {
   --paper-grain: url("/paper-noise.svg");
+  --baize-fibres: url("/baize-fibres.svg");
+  --baize-fibres-size: 200px;
+  --baize-lattice: url("/baize-lattice.svg");
+  --baize-lattice-size: 128px;
   --paper-grain-size: 240px;
   --paper-rule-step: 32px;
   --paper-grid-step: 16px;

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- Mask for the gilt pattern on the baize: only the shape and how strong it is.
+       The colour comes from the gilt token. One diamond per tile, a clover from the
+       logo in its middle and a dot on each knot. -->
+  <path d="M0 64 64 0l64 64-64 64Z" fill="none" stroke="#fff" stroke-opacity=".12"/>
+  <g fill="#fff" fill-opacity=".2" transform="translate(64 64)">
+    <circle cy="-3.4" r="3.4"/><circle cy="3.4" r="3.4"/><circle cx="-3.4" r="3.4"/><circle cx="3.4" r="3.4"/>
+  </g>
+  <g fill="#fff" fill-opacity=".14">
+    <circle cy="64" r="1.6"/><circle cx="128" cy="64" r="1.6"/><circle cx="64" r="1.6"/><circle cx="64" cy="128" r="1.6"/>
+  </g>
+</svg>

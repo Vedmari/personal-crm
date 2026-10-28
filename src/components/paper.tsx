@@ -1,21 +1,42 @@
 import Link from "next/link";
+import { Suspense, ViewTransition } from "react";
 
+import { BookmarkRibbon, PlainRibbon } from "@/components/bookmark-ribbon";
 import { cn } from "@/lib/utils";
 
 // Building blocks borrowed from the landing (personal-crm-landing/src/components):
-// paper sheets laid out on the green notebook cover.
+// paper sheets laid out on the green baize.
 
-// The cover the sheets lie on. Clips sideways instead of hiding overflow,
+// The sheets of one page. Clips sideways instead of hiding overflow,
 // so sticky parts of a sheet keep sticking to the window.
+//
+// Every page is built on it, so it is where the pages turn: a link with the
+// "page-forward" or "page-back" transition type turns the page over (the
+// .page-* view transition classes in globals.css). Any other navigation —
+// the browser's Back, search, filters — swaps the page without a turn.
 export function Cover({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <div
-      className={cn(
-        "mx-auto flex w-full max-w-1440 flex-col gap-40 overflow-x-clip pb-56 md:gap-80 md:pb-120",
-        className,
-      )}
-      {...props}
-    />
+    <ViewTransition
+      enter={{
+        "page-forward": "page-enter-forward",
+        "page-back": "page-enter-back",
+        default: "none",
+      }}
+      exit={{
+        "page-forward": "page-leave-forward",
+        "page-back": "page-leave-back",
+        default: "none",
+      }}
+      default="none"
+    >
+      <div
+        className={cn(
+          "mx-auto flex w-full max-w-1440 flex-col gap-40 overflow-x-clip pb-56 md:gap-80 md:pb-120",
+          className,
+        )}
+        {...props}
+      />
+    </ViewTransition>
   );
 }
 
@@ -23,7 +44,8 @@ export function Cover({ className, ...props }: React.ComponentProps<"div">) {
 export const DIARY_SHEET_X = "pr-72 pl-26 md:pr-hero-r md:pl-hero-l";
 
 // The landing's first screen: a diary page pressed to the left edge,
-// with a spine shade, a stack of pages on the right and a bookmark ribbon.
+// with a spine shade, a stack of pages on the right and a bookmark ribbon
+// that leads to the last opened card.
 export function DiarySheet({
   className,
   children,
@@ -38,10 +60,9 @@ export function DiarySheet({
         )}
         {...props}
       >
-        <div
-          aria-hidden="true"
-          className="absolute -top-4 right-20 z-20 h-118 w-18 bg-ink-red ribbon-shape inset-shadow-ribbon md:-top-6 md:right-ribbon-r md:h-180 md:w-24 md:inset-shadow-ribbon-md"
-        />
+        <Suspense fallback={<PlainRibbon />}>
+          <BookmarkRibbon />
+        </Suspense>
         {children}
       </div>
     </div>

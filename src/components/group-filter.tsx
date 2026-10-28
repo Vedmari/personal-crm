@@ -32,6 +32,7 @@ export async function GroupFilter({
   const manageLink = (
     <Link
       href="/groups"
+      transitionTypes={["page-forward"]}
       className="inline-flex h-32 items-center rounded-sm font-sans text-body font-medium whitespace-nowrap text-ink-strong underline decoration-ink-muted/50 underline-offset-4 hover:decoration-book-cover focus-visible:outline-2 focus-visible:outline-ring md:text-body-md"
     >
       Группы →

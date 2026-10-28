@@ -15,6 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { strike, unstrike } from "@/lib/ink";
 
 const DELETE_FAILED =
   "Не получилось удалить. Проверьте, что база данных запущена, и попробуйте ещё раз.";
@@ -23,6 +24,10 @@ const UNDO_TOAST_MS = 10_000;
 
 // A delete button that asks first. "Отмена" comes first in the markup,
 // so it gets the focus when the dialog opens and Enter does not delete.
+//
+// With `strikeTarget`, "Удалить" closes the dialog and strikes the thing out
+// in red ink first, then deletes it. If deleting fails, the line goes away and
+// the dialog opens again with the error.
 export function ConfirmDelete<Data>({
   trigger,
   children,
@@ -30,6 +35,7 @@ export function ConfirmDelete<Data>({
   description,
   action,
   onDeleted,
+  strikeTarget,
 }: {
   trigger: React.ReactElement;
   children: React.ReactNode;
@@ -37,6 +43,7 @@ export function ConfirmDelete<Data>({
   description: string;
   action: () => Promise<ActionResult<never, Data>>;
   onDeleted: (data: Data) => void;
+  strikeTarget?: () => Element | null | undefined;
 }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,8 +54,21 @@ export function ConfirmDelete<Data>({
     setError(null);
   }
 
-  function handleDelete() {
+  async function handleDelete() {
+    const struck = strikeTarget?.();
+
+    if (struck) {
+      setOpen(false);
+      await strike(struck);
+    }
+
     startTransition(async () => {
+      const fail = (message: string) => {
+        unstrike(struck);
+        setOpen(true);
+        setError(message);
+      };
+
       try {
         const result = await action();
 
@@ -58,9 +78,9 @@ export function ConfirmDelete<Data>({
           return;
         }
 
-        setError(result.message ?? DELETE_FAILED);
+        fail(result.message ?? DELETE_FAILED);
       } catch {
-        setError(DELETE_FAILED);
+        fail(DELETE_FAILED);
       }
     });
   }

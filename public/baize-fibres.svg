@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">
+  <!-- Fibres of the baize: colourless dark noise over the cover colour. -->
+  <filter id="fibres">
+    <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" stitchTiles="stitch"/>
+    <feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.2 0"/>
+  </filter>
+  <rect width="100%" height="100%" filter="url(#fibres)"/>
+</svg>

@@ -10,6 +10,7 @@ import {
 } from "@/app/actions";
 import { ConfirmDelete, toastWithUndo } from "@/components/confirm-delete";
 import { Button } from "@/components/ui/button";
+import { findInkTarget } from "@/lib/ink";
 
 const RESTORE_FAILED =
   "Не получилось вернуть заметку. Проверьте, что база данных запущена.";
@@ -63,6 +64,7 @@ export function DeleteNoteButton({
       description={`Заметка от ${dateLabel} пропадёт из ленты.`}
       action={() => deleteNoteAction(noteId)}
       onDeleted={handleDeleted}
+      strikeTarget={() => findInkTarget(`note-${noteId}`)}
     >
       <Trash2Icon />
     </ConfirmDelete>
