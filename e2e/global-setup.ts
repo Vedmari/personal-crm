@@ -1,12 +1,9 @@
-// Runs once before the browser tests: makes sure the e2e database exists, has
-// the current schema and holds only the contacts the tests expect.
+// Runs once before the browser tests: makes sure the e2e database exists and
+// has the current schema. Each test then empties it (resetDatabase).
 
 import { execFileSync } from "node:child_process";
 
-import postgres from "postgres";
-
-import { databaseNameOf } from "../test/database";
-import { e2eDatabaseUrl, SEEDED_CONTACTS } from "./database";
+import { e2eDatabaseUrl, resetDatabase } from "./database";
 
 // The address goes in the environment, not in the arguments: it holds the
 // password.
@@ -35,31 +32,6 @@ export default async function globalSetup(): Promise<void> {
   // The same script the deploy uses, pointed at the e2e database.
   runScript("scripts/migrate.mts", url);
 
-  const sql = postgres(url, { max: 1, onnotice: () => {} });
-
-  try {
-    const [{ name }] = await sql<
-      { name: string }[]
-    >`select current_database() as name`;
-
-    if (!name.endsWith("_e2e_test") || name !== databaseNameOf(url)) {
-      throw new Error(
-        `Refusing to empty "${name}": it is not the e2e database.`,
-      );
-    }
-
-    const tables = await sql<{ name: string }[]>`
-      select quote_ident(tablename) as name from pg_tables where schemaname = 'public'
-    `;
-
-    if (tables.length > 0) {
-      await sql.unsafe(
-        `truncate table ${tables.map((table) => table.name).join(", ")} restart identity cascade`,
-      );
-    }
-
-    await sql`insert into contacts ${sql(SEEDED_CONTACTS, "name", "about")}`;
-  } finally {
-    await sql.end();
-  }
+  // Checks the database before any test runs, so a wrong address stops here.
+  await resetDatabase();
 }
