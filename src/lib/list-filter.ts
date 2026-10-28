@@ -66,6 +66,12 @@ export function parseShown(searchParams: SearchParams): number {
   );
 }
 
+// The id of a letter section of the list: alphabet tabs link to it
+// (`#letter-Я`), the list puts it on the section.
+export function letterAnchor(letter: string): string {
+  return `letter-${letter}`;
+}
+
 // The length of the list that reaches the contact at this place
 // in the alphabet (the first one is 1).
 export function shownFor(position: number): number {

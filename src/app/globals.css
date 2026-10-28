@@ -498,3 +498,23 @@ html[data-cover] .notebook-cover {
     animation: none !important;
   }
 }
+
+/* Alphabet tabs (src/components/alphabet-tabs.tsx): the column starts beside
+   the heading and then sticks under the search bar. The tabs are as tall as a
+   finger needs, but all of them fit in the window from where the column starts. */
+.alphabet-tabs {
+  --tabs-top: 200px;
+  margin-top: var(--tabs-top);
+
+  @variant md {
+    --tabs-top: 100px;
+  }
+}
+
+.alphabet-tab {
+  height: min(24px, (100dvh - var(--tabs-top) - 16px) / var(--letters));
+
+  @variant md {
+    height: min(28px, (100dvh - var(--tabs-top) - 16px) / var(--letters));
+  }
+}
