@@ -1,3 +1,7 @@
+import type { useRouter } from "next/navigation";
+
+import { LIST_PAGE_SIZE, listHref, parseShown, shownFor } from "./list-filter";
+
 const WAIT_FOR_ROW_MS = 5000;
 const SCROLL_SETTLE_MS = 1500;
 const FLASH_MS = 4000;
@@ -57,4 +61,30 @@ export function revealContact(id: number): void {
   };
 
   requestAnimationFrame(tryReveal);
+}
+
+// After a contact is added or brought back: makes the list of the main screen
+// long enough to hold it, clears the search and the group that could hide it,
+// and reveals it. A list that is already longer stays as long. Somebody who
+// has left the main screen meanwhile is not taken back to it.
+export function showContactInList(
+  router: ReturnType<typeof useRouter>,
+  contact: { id: number; position: number | null },
+): void {
+  if (window.location.pathname !== "/") {
+    return;
+  }
+
+  const current = parseShown(
+    Object.fromEntries(new URLSearchParams(window.location.search)),
+  );
+  const needed =
+    contact.position === null ? LIST_PAGE_SIZE : shownFor(contact.position);
+  const href = listHref({ shown: Math.max(current, needed) });
+
+  if (window.location.pathname + window.location.search !== href) {
+    router.replace(href, { scroll: false });
+  }
+
+  revealContact(contact.id);
 }

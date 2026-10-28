@@ -14,6 +14,18 @@ export async function createTestContact(name: string): Promise<number> {
   return row.id;
 }
 
+// Many contacts in one insert. Returns their ids in the order of `people`.
+export async function createTestContacts(
+  people: { name: string; about?: string }[],
+): Promise<number[]> {
+  const rows = await db
+    .insert(contacts)
+    .values(people)
+    .returning({ id: contacts.id });
+
+  return rows.map((row) => row.id);
+}
+
 // A note written at a given moment, e.g. "2026-09-10T12:00:00+03:00".
 export async function addTestNote(
   contactId: number,

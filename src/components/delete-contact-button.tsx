@@ -11,14 +11,17 @@ import {
 } from "@/app/actions";
 import { ConfirmDelete, toastWithUndo } from "@/components/confirm-delete";
 import { Button } from "@/components/ui/button";
-import { revealContact } from "@/lib/reveal-contact";
+import { showContactInList } from "@/lib/reveal-contact";
 
 const RESTORE_FAILED =
   "Не получилось вернуть контакт. Проверьте, что база данных запущена.";
 
 type DeletedContact = { id: number; name: string };
 
-async function restore(contact: DeletedContact) {
+async function restore(
+  router: ReturnType<typeof useRouter>,
+  contact: DeletedContact,
+) {
   try {
     const result = await restoreContactAction(contact.id);
 
@@ -28,7 +31,7 @@ async function restore(contact: DeletedContact) {
     }
 
     toast.success(`${contact.name} — снова в списке контактов`);
-    revealContact(contact.id);
+    showContactInList(router, result.data);
   } catch {
     toast.error(RESTORE_FAILED);
   }
@@ -53,7 +56,7 @@ export function DeleteContactButton({
     router.replace("/");
     toastWithUndo({
       message: `Контакт «${contact.name}» будет удалён! Ошибочка вышла?`,
-      onUndo: () => restore(contact),
+      onUndo: () => restore(router, contact),
       onExpire: () => erase(contact),
     });
   }

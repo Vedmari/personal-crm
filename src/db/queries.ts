@@ -16,6 +16,7 @@ import {
 } from "drizzle-orm";
 
 import { MOSCOW_TIME_ZONE } from "@/lib/format";
+import { LIST_PAGE_SIZE } from "@/lib/list-filter";
 import type { ContactInput } from "@/lib/validation";
 
 import { safeQuery } from "./errors";
@@ -81,22 +82,26 @@ function inGroup(groupId: number): SQL {
 }
 
 // With a group, both the list and the total (the "of N" of the counter) are
-// about that group's contacts only.
+// about that group's contacts only. `items` are the first `limit` of the
+// `matched` ones: the list is shown a hundred at a time.
 export const listContacts = safeQuery(
   "listContacts",
   async (
     search: string,
     groupId: number | null = null,
+    limit: number = LIST_PAGE_SIZE,
   ): Promise<{
     items: ContactListItem[];
+    matched: number;
     total: number;
   }> => {
     const inScope = and(
       isNull(contacts.deletedAt),
       groupId === null ? undefined : inGroup(groupId),
     );
+    const matches = contactMatches(search);
 
-    const [items, totals] = await Promise.all([
+    const [items, totals, matchedTotals] = await Promise.all([
       db
         .select({
           id: contacts.id,
@@ -106,12 +111,56 @@ export const listContacts = safeQuery(
           email: contacts.email,
         })
         .from(contacts)
-        .where(and(inScope, contactMatches(search)))
-        .orderBy(nameInAlphabeticalOrder, asc(contacts.id)),
+        .where(and(inScope, matches))
+        .orderBy(nameInAlphabeticalOrder, asc(contacts.id))
+        .limit(limit),
       db.select({ value: count() }).from(contacts).where(inScope),
+      matches === undefined
+        ? null
+        : db
+            .select({ value: count() })
+            .from(contacts)
+            .where(and(inScope, matches)),
     ]);
+    const total = totals[0]?.value ?? 0;
 
-    return { items, total: totals[0]?.value ?? 0 };
+    return {
+      items,
+      matched: matchedTotals === null ? total : (matchedTotals[0]?.value ?? 0),
+      total,
+    };
+  },
+);
+
+// The place of a contact in the whole alphabetical list, without search or
+// group: the first one is 1. The list uses it to load far enough to show a
+// contact that was just added or brought back. Null when there is no such
+// contact, or it is deleted.
+export const contactPosition = safeQuery(
+  "contactPosition",
+  async (id: number): Promise<number | null> => {
+    const [target] = await db
+      .select({ name: contacts.name })
+      .from(contacts)
+      .where(and(eq(contacts.id, id), isNull(contacts.deletedAt)))
+      .limit(1);
+
+    if (!target) {
+      return null;
+    }
+
+    // The same order as the list: by name in the Russian collation, then by id.
+    const [before] = await db
+      .select({ value: count() })
+      .from(contacts)
+      .where(
+        and(
+          isNull(contacts.deletedAt),
+          sql`(${nameInAlphabeticalOrder}, ${contacts.id}) < (${target.name} collate "ru-x-icu", ${id})`,
+        ),
+      );
+
+    return (before?.value ?? 0) + 1;
   },
 );
 

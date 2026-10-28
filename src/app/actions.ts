@@ -5,6 +5,7 @@ import { refresh } from "next/cache";
 import {
   addContactedNote,
   addNote,
+  contactPosition,
   createContact,
   createGroup,
   deleteContact,
@@ -53,9 +54,13 @@ const KEEP_IN_TOUCH_INVALID =
 const CONTACT_CHANGED_ELSEWHERE =
   "Пока вы редактировали, этот контакт изменили в другой вкладке. Чтобы не затереть те изменения, ваши правки не сохранены. Скопируйте нужный текст, обновите страницу и внесите правки заново.";
 
+// A contact that was just added or brought back, and its place in the
+// alphabet: the list loads that far to show it. Null if it is gone already.
+type ShownContact = { id: number; name: string; position: number | null };
+
 export async function createContactAction(
   formData: FormData,
-): Promise<ActionResult<ContactField, { id: number; name: string }>> {
+): Promise<ActionResult<ContactField, ShownContact>> {
   const parsed = parseContactForm(formData);
 
   if (!parsed.ok) {
@@ -63,10 +68,11 @@ export async function createContactAction(
   }
 
   const contact = await createContact(parsed.data);
+  const position = await contactPosition(contact.id);
 
   refresh();
 
-  return { ok: true, data: contact };
+  return { ok: true, data: { ...contact, position } };
 }
 
 // `updatedAt` is when the values shown in the edit form were last saved.
@@ -344,7 +350,7 @@ export async function deleteContactAction(
 
 export async function restoreContactAction(
   contactId: number,
-): Promise<ActionResult<never, { id: number; name: string }>> {
+): Promise<ActionResult<never, ShownContact>> {
   const id = parseId(contactId);
   const contact = id === null ? undefined : await restoreContact(id);
 
@@ -352,9 +358,11 @@ export async function restoreContactAction(
     return { ok: false, errors: {}, message: RESTORE_TOO_LATE };
   }
 
+  const position = await contactPosition(contact.id);
+
   refresh();
 
-  return { ok: true, data: contact };
+  return { ok: true, data: { ...contact, position } };
 }
 
 export async function eraseDeletedContactAction(
