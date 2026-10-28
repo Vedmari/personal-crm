@@ -39,7 +39,9 @@ export function EditContactButton({
     <Dialog open={open} onOpenChange={setOpen}>
       {/* On phones only the pencil is shown, so the back link fits next to it. */}
       <DialogTrigger
-        render={<Button variant="outline" className="max-md:size-40 max-md:p-0" />}
+        render={
+          <Button variant="outline" className="max-md:size-40 max-md:p-0" />
+        }
       >
         <PencilIcon />
         <span className="max-md:sr-only">Изменить</span>

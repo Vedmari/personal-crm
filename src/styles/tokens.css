@@ -31,7 +31,8 @@
 
   /* Fonts */
   --font-serif: "Alegreya Variable", serif;
-  --font-serif-italic: "Alegreya", serif; /* only the 500 italic face is loaded */
+  --font-serif-italic:
+    "Alegreya", serif; /* only the 500 italic face is loaded */
   --font-sans: "Alegreya Sans", sans-serif;
   --font-hand: "Caveat Variable", cursive;
 
@@ -121,12 +122,16 @@
   --radius-pill: 29px;
 
   /* Shadows */
-  --shadow-hero: 4px 0 0 -1px var(--color-paper-edge), 8px 0 0 -2px var(--color-paper-edge-deep),
-    0 10px 24px rgba(0, 0, 0, 0.25);
-  --shadow-hero-md: 5px 0 0 -1px var(--color-paper-edge), 10px 0 0 -2px var(--color-paper-edge-deep),
-    0 14px 34px rgba(0, 0, 0, 0.28);
-  --shadow-sticker: 0 18px 16px -12px rgba(20, 30, 15, 0.45), 0 2px 4px rgba(20, 30, 15, 0.18);
-  --shadow-sticker-md: 0 26px 22px -16px rgba(20, 30, 15, 0.45), 0 2px 4px rgba(20, 30, 15, 0.18);
+  --shadow-hero:
+    4px 0 0 -1px var(--color-paper-edge),
+    8px 0 0 -2px var(--color-paper-edge-deep), 0 10px 24px rgba(0, 0, 0, 0.25);
+  --shadow-hero-md:
+    5px 0 0 -1px var(--color-paper-edge),
+    10px 0 0 -2px var(--color-paper-edge-deep), 0 14px 34px rgba(0, 0, 0, 0.28);
+  --shadow-sticker:
+    0 18px 16px -12px rgba(20, 30, 15, 0.45), 0 2px 4px rgba(20, 30, 15, 0.18);
+  --shadow-sticker-md:
+    0 26px 22px -16px rgba(20, 30, 15, 0.45), 0 2px 4px rgba(20, 30, 15, 0.18);
   --shadow-tape: 0 1px 2px rgba(0, 0, 0, 0.12);
   --inset-shadow-ribbon: inset -3px 0 0 rgba(0, 0, 0, 0.12);
   --inset-shadow-ribbon-md: inset -4px 0 0 rgba(0, 0, 0, 0.12);

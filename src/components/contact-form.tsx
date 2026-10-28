@@ -26,7 +26,8 @@ const EMPTY_VALUES: ContactInput = {
 
 // A field ends 16px below a rule; the error moves down onto the next line
 // and gives the 16px back, so the fields below keep their places on the rules.
-const FIELD_ERROR_CLASS_NAME = "mt-16 -mb-16 font-sans text-body text-destructive";
+const FIELD_ERROR_CLASS_NAME =
+  "mt-16 -mb-16 font-sans text-body text-destructive";
 
 const SAVE_FAILED =
   "Не получилось сохранить. Проверьте, что база данных запущена, и попробуйте ещё раз.";
@@ -129,8 +130,7 @@ export function ContactForm<Data>({
   // An error message disappears as soon as its field is edited.
   function handleChange(event: React.ChangeEvent<HTMLFormElement>) {
     const field = (event.target as { name?: string }).name as
-      | ContactField
-      | undefined;
+      ContactField | undefined;
 
     if (field && errors[field]) {
       setErrors((current) => ({ ...current, [field]: undefined }));
@@ -205,10 +205,7 @@ export function ContactForm<Data>({
             className="max-h-240 min-h-112"
           />
           {errors.agreements ? (
-            <p
-              id="contact-agreements-error"
-              className={FIELD_ERROR_CLASS_NAME}
-            >
+            <p id="contact-agreements-error" className={FIELD_ERROR_CLASS_NAME}>
               {errors.agreements}
             </p>
           ) : null}
@@ -222,7 +219,9 @@ export function ContactForm<Data>({
       ) : null}
 
       <DialogFooter>
-        <DialogClose render={<Button type="button" variant="outline" size="lg" />}>
+        <DialogClose
+          render={<Button type="button" variant="outline" size="lg" />}
+        >
           Отмена
         </DialogClose>
         <Button type="submit" size="lg" disabled={isPending}>

@@ -4,8 +4,8 @@
 #   - IMAGE, IMAGE_TAG    - the app image and its version (git commit SHA)
 # Local development uses docker-compose.yml in the repository root instead.
 
-x-logging: &logging
-  # Container logs are capped at 3 files of 10 MB so they cannot fill the disk.
+x-logging:
+  &logging # Container logs are capped at 3 files of 10 MB so they cannot fill the disk.
   driver: json-file
   options:
     max-size: "10m"

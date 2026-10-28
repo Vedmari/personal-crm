@@ -1,10 +1,13 @@
+import { sql } from "drizzle-orm";
 import {
   index,
   integer,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 // How often to keep in touch with a contact. Not a free-text field, so the
@@ -65,6 +68,46 @@ export const notes = pgTable(
   ],
 );
 
-export type KeepInTouchInterval = (typeof keepInTouchInterval.enumValues)[number];
+// Groups are made by the user ("Семья", "Теннис"). The unique index keeps two
+// groups from having the same name: capital letters and "ё"/"е" do not count
+// as a difference, as in search, so "ЁЛКА" and "елка" are the same name.
+export const groups = pgTable(
+  "groups",
+  {
+    id: integer().primaryKey().generatedAlwaysAsIdentity(),
+    name: text().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("groups_name_unique_idx").on(
+      sql`replace(lower(${table.name}), 'ё', 'е')`,
+    ),
+  ],
+);
+
+// Who is in which group. A contact can be in many groups. Deleting a group
+// removes its rows here; erasing a contact removes its rows. A contact that
+// is only marked as deleted keeps them, so "Вернуть" puts it back in its groups.
+export const contactGroups = pgTable(
+  "contact_groups",
+  {
+    contactId: integer("contact_id")
+      .notNull()
+      .references(() => contacts.id, { onDelete: "cascade" }),
+    groupId: integer("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.contactId, table.groupId] }),
+    index("contact_groups_group_id_idx").on(table.groupId),
+  ],
+);
+
+export type KeepInTouchInterval =
+  (typeof keepInTouchInterval.enumValues)[number];
 export type Contact = typeof contacts.$inferSelect;
 export type Note = typeof notes.$inferSelect;
+export type Group = typeof groups.$inferSelect;

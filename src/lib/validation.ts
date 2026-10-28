@@ -14,8 +14,7 @@ export type ContactField = keyof ContactInput;
 export type FieldErrors<Field extends string> = Partial<Record<Field, string>>;
 
 export type ParseResult<Data, Field extends string> =
-  | { ok: true; data: Data }
-  | { ok: false; errors: FieldErrors<Field> };
+  { ok: true; data: Data } | { ok: false; errors: FieldErrors<Field> };
 
 export const CONTACT_LIMITS: Record<ContactField, number> = {
   name: 200,
@@ -49,7 +48,8 @@ export function parseContactForm(
 
   for (const field of CONTACT_FIELDS) {
     if (data[field].length > CONTACT_LIMITS[field]) {
-      errors[field] = `Слишком длинно: не больше ${CONTACT_LIMITS[field]} символов`;
+      errors[field] =
+        `Слишком длинно: не больше ${CONTACT_LIMITS[field]} символов`;
     }
   }
 
@@ -85,6 +85,29 @@ export function parseNoteForm(formData: FormData): ParseResult<string, "body"> {
   }
 
   return { ok: true, data: body };
+}
+
+export const GROUP_NAME_MAX_LENGTH = 50;
+
+// The name of a group, from a form field or an action argument. Spaces at the
+// ends are cut. Whether the name is already taken is for the database to say.
+export function parseGroupName(value: unknown): ParseResult<string, "name"> {
+  const name = typeof value === "string" ? value.trim() : "";
+
+  if (!name) {
+    return { ok: false, errors: { name: "Напишите название группы" } };
+  }
+
+  if (name.length > GROUP_NAME_MAX_LENGTH) {
+    return {
+      ok: false,
+      errors: {
+        name: `Слишком длинно: не больше ${GROUP_NAME_MAX_LENGTH} символов`,
+      },
+    };
+  }
+
+  return { ok: true, data: name };
 }
 
 // In the order of the choice in the contact card.

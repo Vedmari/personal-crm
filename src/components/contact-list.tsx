@@ -5,8 +5,13 @@ import { DATE_LINE_CLASS_NAME } from "@/components/paper";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listContacts, type ContactListItem } from "@/db/queries";
 import { formatCount, getGroupLetter, pluralize } from "@/lib/format";
+import { listHref } from "@/lib/list-filter";
+import { readListFilter } from "@/lib/read-list-filter";
 
 const CONTACT_FORMS = ["контакт", "контакта", "контактов"] as const;
+
+const TEXT_LINK_CLASS_NAME =
+  "rounded-sm text-ink-strong underline decoration-ink-muted/50 underline-offset-4 hover:decoration-book-cover focus-visible:outline-2 focus-visible:outline-ring";
 
 // A non-breaking space: keeps the height of a line that has no text.
 const EMPTY_CELL = String.fromCharCode(160);
@@ -58,7 +63,7 @@ function ContactRow({ contact }: { contact: ContactListItem }) {
 }
 
 // A handwritten mark, like the "?" and "✓" on the margins of the landing sheets.
-function EmptyState({
+export function EmptyState({
   mark,
   title,
   children,
@@ -92,9 +97,21 @@ export async function ContactList({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { q } = await searchParams;
-  const search = typeof q === "string" ? q.trim() : "";
-  const { items, total } = await listContacts(search);
+  const { search, group } = await readListFilter(searchParams);
+  const { items, total } = await listContacts(search, group?.id ?? null);
+
+  // With a group, `total` is the size of the group, not of the whole book.
+  if (total === 0 && group) {
+    return (
+      <EmptyState mark="?" title={`В группе «${group.name}» пока никого`}>
+        Добавьте людей в карточках или{" "}
+        <Link href={listHref({ q: search })} className={TEXT_LINK_CLASS_NAME}>
+          покажите все контакты
+        </Link>
+        .
+      </EmptyState>
+    );
+  }
 
   if (total === 0) {
     return (
@@ -104,14 +121,26 @@ export async function ContactList({
     );
   }
 
+  if (items.length === 0 && group) {
+    return (
+      <EmptyState
+        mark="?"
+        title={`В группе «${group.name}» по запросу «${search}» никого не нашлось`}
+      >
+        Можно{" "}
+        <Link href={listHref({ q: search })} className={TEXT_LINK_CLASS_NAME}>
+          искать по всем контактам
+        </Link>
+        .
+      </EmptyState>
+    );
+  }
+
   if (items.length === 0) {
     return (
       <EmptyState mark="?" title={`По запросу «${search}» никого не нашлось`}>
         Поиск идёт по имени и по полю «Кто это». Проверьте написание или{" "}
-        <Link
-          href="/"
-          className="rounded-sm text-ink-strong underline decoration-ink-muted/50 underline-offset-4 hover:decoration-book-cover focus-visible:outline-2 focus-visible:outline-ring"
-        >
+        <Link href="/" className={TEXT_LINK_CLASS_NAME}>
           покажите все контакты
         </Link>
         .
@@ -119,12 +148,17 @@ export async function ContactList({
     );
   }
 
+  const groupSuffix = group ? ` в группе «${group.name}»` : "";
+  const counter = search
+    ? `Найдено ${formatCount(items.length)} из ${formatCount(total)}${groupSuffix}`
+    : group
+      ? `В группе «${group.name}» — ${formatCount(total)} ${pluralize(total, CONTACT_FORMS)}`
+      : `${formatCount(total)} ${pluralize(total, CONTACT_FORMS)}`;
+
   return (
     <>
       <p aria-live="polite" className={DATE_LINE_CLASS_NAME}>
-        {search
-          ? `Найдено ${formatCount(items.length)} из ${formatCount(total)}`
-          : `${formatCount(total)} ${pluralize(total, CONTACT_FORMS)}`}
+        {counter}
       </p>
       {groupByLetter(items).map((group) => (
         // The letter is a margin mark: on phones it hangs in the right margin

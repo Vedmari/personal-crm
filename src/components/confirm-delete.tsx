@@ -74,12 +74,17 @@ export function ConfirmDelete<Data>({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         {error ? (
-          <p role="alert" className="mt-16 font-sans text-body text-destructive">
+          <p
+            role="alert"
+            className="mt-16 font-sans text-body text-destructive"
+          >
             {error}
           </p>
         ) : null}
         <DialogFooter>
-          <DialogClose render={<Button type="button" variant="outline" size="lg" />}>
+          <DialogClose
+            render={<Button type="button" variant="outline" size="lg" />}
+          >
             Отмена
           </DialogClose>
           <Button

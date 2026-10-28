@@ -1,17 +1,18 @@
 import { KeepInTouchList } from "@/components/keep-in-touch-list";
 import { listOverdueContacts } from "@/db/queries";
 import { formatDay, KEEP_IN_TOUCH_LABELS } from "@/lib/format";
+import { showsKeepInTouch } from "@/lib/list-filter";
+import { readListFilter } from "@/lib/read-list-filter";
 
 // "Пора связаться" above the contact list: contacts whose keep-in-touch
-// deadline is over. Not shown while searching or when nobody is overdue.
+// deadline is over. Not shown while searching, while a group is chosen, or
+// when nobody is overdue.
 export async function KeepInTouchBlock({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { q } = await searchParams;
-
-  if (typeof q === "string" && q.trim()) {
+  if (!showsKeepInTouch(await readListFilter(searchParams))) {
     return null;
   }
 

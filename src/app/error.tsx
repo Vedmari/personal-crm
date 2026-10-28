@@ -2,7 +2,10 @@
 
 import { useEffect } from "react";
 
-import { STICKER_TEXT_CLASS_NAME, StickerNote } from "@/components/sticker-note";
+import {
+  STICKER_TEXT_CLASS_NAME,
+  StickerNote,
+} from "@/components/sticker-note";
 import { Button, ButtonDot } from "@/components/ui/button";
 
 export default function ErrorPage({
@@ -26,7 +29,11 @@ export default function ErrorPage({
         </code>{" "}
         и попробуйте снова.
       </p>
-      <Button size="lg" className="mt-8 self-start md:mt-12" onClick={() => retry()}>
+      <Button
+        size="lg"
+        className="mt-8 self-start md:mt-12"
+        onClick={() => retry()}
+      >
         Попробовать снова
         <ButtonDot>↻</ButtonDot>
       </Button>

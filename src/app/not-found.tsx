@@ -1,6 +1,9 @@
 import Link from "next/link";
 
-import { STICKER_TEXT_CLASS_NAME, StickerNote } from "@/components/sticker-note";
+import {
+  STICKER_TEXT_CLASS_NAME,
+  StickerNote,
+} from "@/components/sticker-note";
 import { ButtonDot, buttonVariants } from "@/components/ui/button";
 
 export default function NotFound() {
@@ -11,7 +14,10 @@ export default function NotFound() {
       </p>
       <Link
         href="/"
-        className={buttonVariants({ size: "lg", className: "mt-8 self-start md:mt-12" })}
+        className={buttonVariants({
+          size: "lg",
+          className: "mt-8 self-start md:mt-12",
+        })}
       >
         Ко всем контактам
         <ButtonDot>→</ButtonDot>

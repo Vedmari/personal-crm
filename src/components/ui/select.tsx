@@ -1,15 +1,15 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { Select as SelectPrimitive } from "@base-ui/react/select"
-import { CheckIcon, ChevronDownIcon } from "lucide-react"
+import * as React from "react";
+import { Select as SelectPrimitive } from "@base-ui/react/select";
+import { CheckIcon, ChevronDownIcon } from "lucide-react";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
 // Based on the shadcn/ui select (base-nova), resized to the 1px spacing
 // scale and the landing tokens.
 
-const Select = SelectPrimitive.Root
+const Select = SelectPrimitive.Root;
 
 function SelectValue({ className, ...props }: SelectPrimitive.Value.Props) {
   return (
@@ -18,7 +18,7 @@ function SelectValue({ className, ...props }: SelectPrimitive.Value.Props) {
       className={cn("flex flex-1 text-left", className)}
       {...props}
     />
-  )
+  );
 }
 
 // One 32px rule tall, so it sits on the lines of the sheet.
@@ -32,7 +32,7 @@ function SelectTrigger({
       data-slot="select-trigger"
       className={cn(
         "flex h-32 w-fit items-center justify-between gap-10 rounded-md border border-input bg-paper-grid pr-8 pl-12 font-sans text-body whitespace-nowrap text-ink transition-[border-color,box-shadow] outline-none select-none hover:border-ink-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60 md:text-body-md [&_svg]:pointer-events-none [&_svg]:shrink-0",
-        className
+        className,
       )}
       {...props}
     >
@@ -43,7 +43,7 @@ function SelectTrigger({
         }
       />
     </SelectPrimitive.Trigger>
-  )
+  );
 }
 
 function SelectContent({
@@ -73,7 +73,7 @@ function SelectContent({
           data-align-trigger={alignItemWithTrigger}
           className={cn(
             "relative isolate z-50 max-h-(--available-height) min-w-(--anchor-width) origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-md bg-paper-grid p-4 text-ink shadow-sticker ring-1 ring-ink-strong/15 duration-100 data-[align-trigger=true]:animate-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
-            className
+            className,
           )}
           {...props}
         >
@@ -81,7 +81,7 @@ function SelectContent({
         </SelectPrimitive.Popup>
       </SelectPrimitive.Positioner>
     </SelectPrimitive.Portal>
-  )
+  );
 }
 
 function SelectItem({
@@ -94,7 +94,7 @@ function SelectItem({
       data-slot="select-item"
       className={cn(
         "relative flex h-36 w-full cursor-default items-center rounded-sm pr-36 pl-12 font-sans text-body whitespace-nowrap outline-hidden select-none data-highlighted:bg-ink-strong/8 data-selected:font-bold data-selected:text-ink-strong data-disabled:pointer-events-none data-disabled:opacity-50 md:text-body-md",
-        className
+        className,
       )}
       {...props}
     >
@@ -107,7 +107,7 @@ function SelectItem({
         <CheckIcon className="size-18" />
       </SelectPrimitive.ItemIndicator>
     </SelectPrimitive.Item>
-  )
+  );
 }
 
-export { Select, SelectContent, SelectItem, SelectTrigger, SelectValue }
+export { Select, SelectContent, SelectItem, SelectTrigger, SelectValue };
