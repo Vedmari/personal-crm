@@ -25,6 +25,7 @@ export default function GroupsPage() {
             <div className="flex h-row items-center">
               <Link
                 href="/"
+                transitionTypes={["page-back"]}
                 className={cn(
                   DATE_LINE_CLASS_NAME,
                   "flex w-fit items-center gap-8 rounded-sm whitespace-nowrap transition-colors hover:text-ink-strong focus-visible:outline-2 focus-visible:outline-ring",

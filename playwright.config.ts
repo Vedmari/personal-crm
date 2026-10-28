@@ -25,6 +25,24 @@ export default defineConfig({
     locale: "ru-RU",
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
+    // The notebook cover was opened already in this browser session, so it
+    // does not cover the first page of every test. e2e/notebook.spec.ts
+    // clears it to test the cover.
+    storageState: {
+      cookies: [
+        {
+          name: "notebook-opened",
+          value: "1",
+          domain: "localhost",
+          path: "/",
+          expires: -1,
+          httpOnly: false,
+          secure: false,
+          sameSite: "Lax",
+        },
+      ],
+      origins: [],
+    },
   },
   webServer: {
     command: `pnpm build && pnpm start --port ${PORT}`,

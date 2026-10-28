@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
+import { BookmarkHere } from "@/components/bookmark-ribbon";
 import { ContactAvatar } from "@/components/contact-avatar";
 import { ContactGroupsPicker } from "@/components/contact-groups-picker";
 import { DeleteContactButton } from "@/components/delete-contact-button";
@@ -66,6 +67,7 @@ const DETAIL_LINK_CLASS_NAME =
 const BACK_LINK = (
   <Link
     href="/"
+    transitionTypes={["page-back"]}
     className={cn(
       DATE_LINE_CLASS_NAME,
       "flex w-fit items-center gap-8 rounded-sm whitespace-nowrap transition-colors hover:text-ink-strong focus-visible:outline-2 focus-visible:outline-ring",
@@ -102,6 +104,7 @@ async function ContactCard({
 
   return (
     <main className="flex flex-col gap-40 md:gap-80">
+      <BookmarkHere id={contact.id} name={contact.name} />
       <DiarySheet>
         <div className={cn(DIARY_SHEET_X, "pt-42 pb-56 md:pb-70")}>
           {/* One rule: the buttons are taller than the line and overlap it a bit. */}
@@ -133,8 +136,12 @@ async function ContactCard({
               <header className="flex flex-col items-start md:flex-row md:gap-24">
                 <ContactAvatar name={contact.name} size="lg" />
                 <div className="w-full min-w-0 md:w-auto md:flex-1">
-                  <h1 className="relative -top-7 font-serif text-h2 font-medium break-words text-ink md:-top-9 md:text-h2-md">
-                    {contact.name}
+                  {/* Struck out in red ink when the contact is deleted. */}
+                  <h1
+                    data-ink-for={`contact-${contact.id}`}
+                    className="relative -top-7 font-serif text-h2 font-medium break-words text-ink md:-top-9 md:text-h2-md"
+                  >
+                    <span data-ink-text>{contact.name}</span>
                   </h1>
                   {contact.about ? (
                     <p className="font-sans text-lead break-words text-ink-body md:text-lead-md">
@@ -270,7 +277,7 @@ async function ContactCard({
           ) : (
             <ol className="mt-42 flex flex-col gap-row">
               {notes.map((note) => (
-                <li key={note.id}>
+                <li key={note.id} data-ink-for={`note-${note.id}`}>
                   {/* One rule: the bin is taller than the line and overlaps it a bit. */}
                   <div className="flex h-row items-center justify-between gap-16">
                     <time
@@ -285,7 +292,7 @@ async function ContactCard({
                     />
                   </div>
                   <p className="font-sans text-body break-words whitespace-pre-wrap text-ink-body md:text-body-md">
-                    {note.body}
+                    <span data-ink-text>{note.body}</span>
                   </p>
                 </li>
               ))}

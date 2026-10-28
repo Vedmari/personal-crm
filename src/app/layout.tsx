@@ -9,7 +9,9 @@ import "@fontsource-variable/caveat/wght.css";
 
 import type { Metadata, Viewport } from "next";
 
+import { NotebookCover } from "@/components/notebook-cover";
 import { Toaster } from "@/components/ui/sonner";
+import { coverScript } from "@/lib/notebook";
 
 import "./globals.css";
 
@@ -25,8 +27,13 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ru" className="h-full antialiased">
+    // The cover script sets data-cover on <html> before React hydrates it.
+    <html lang="ru" className="h-full antialiased" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: coverScript() }} />
+      </head>
       <body className="flex min-h-full flex-col bg-book-cover font-sans text-ink-body lining-nums">
+        <NotebookCover />
         {children}
         <Toaster position="bottom-center" />
       </body>

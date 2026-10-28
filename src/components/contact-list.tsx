@@ -43,6 +43,7 @@ function ContactRow({ contact }: { contact: ContactListItem }) {
     <li id={`contact-${contact.id}`} className="contact-row">
       <Link
         href={`/contacts/${contact.id}`}
+        transitionTypes={["page-forward"]}
         className="flex h-64 items-center gap-12 rounded-md px-8 transition-colors hover:bg-ink-strong/5 focus-visible:bg-ink-strong/5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring md:gap-16"
       >
         <ContactAvatar name={contact.name} />

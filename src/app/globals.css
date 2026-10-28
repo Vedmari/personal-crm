@@ -44,6 +44,30 @@
 }
 
 /*
+ * The baize the notebook lies on: fibres and a gilt diamond lattice with the
+ * logo's clover. Fixed layers behind the page, not background-attachment:
+ * fixed, which stutters on iPhones. Fixed to the window, the lattice lines up
+ * with the lattice pressed into the notebook cover (.notebook-cover).
+ */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+body::before {
+  background: var(--baize-fibres) 0 0 / var(--baize-fibres-size);
+}
+
+body::after {
+  background-color: var(--color-gilt);
+  mask: var(--baize-lattice) 0 0 / var(--baize-lattice-size);
+}
+
+/*
  * Paper textures, the same as on the landing (personal-crm-landing/src/styles/global.css).
  * Each sheet is a stack of background layers: grain tile, optional spine shade,
  * red margin line and blue rules. Desktop values switch through the --paper-* variables.
@@ -205,5 +229,272 @@
   }
   100% {
     background-color: transparent;
+  }
+}
+
+/*
+ * The closed notebook (src/components/notebook-cover.tsx). It lies where the
+ * diary sheet lies, so it opens onto it: the same top and right gaps, centred
+ * in 1440px. The board swings open around its left edge, the spine. The
+ * lattice pressed into the leather is the baize lattice shifted by the board's
+ * offset, so its lines carry on from the baize.
+ */
+.notebook-cover {
+  display: none;
+}
+
+html[data-cover] .notebook-cover {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  cursor: pointer;
+  container-type: size;
+  perspective: 2400px;
+  perspective-origin: 0 50%;
+}
+
+.notebook-cover-board {
+  --cover-x: max(0px, (100cqw - 1440px) / 2);
+  --cover-y: 14px;
+
+  position: absolute;
+  top: var(--cover-y);
+  bottom: 0;
+  left: var(--cover-x);
+  right: calc(var(--cover-x) + 14px);
+  transform-origin: 0 50%;
+  transform-style: preserve-3d;
+  animation: notebook-cover-open 900ms cubic-bezier(0.55, 0.05, 0.3, 1) 350ms
+    forwards;
+
+  @variant md {
+    --cover-y: 28px;
+    right: calc(var(--cover-x) + var(--spacing-hero-wrap-r));
+  }
+}
+
+.notebook-cover-front,
+.notebook-cover-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: 0 var(--radius-hero) var(--radius-hero) 0;
+
+  @variant md {
+    border-radius: 0 var(--radius-hero-md) var(--radius-hero-md) 0;
+  }
+}
+
+/* Leather with a darker spine, the pressed lattice and its light edge. */
+.notebook-cover-front {
+  background-color: var(--color-leather);
+  background-image:
+    linear-gradient(
+      90deg,
+      var(--color-leather-spine) 0,
+      var(--color-leather-spine-fade) var(--paper-spine-fade),
+      transparent var(--paper-spine-end)
+    ),
+    var(--baize-fibres);
+  background-size:
+    100% 100%,
+    var(--baize-fibres-size);
+  box-shadow: var(--shadow-hero);
+
+  /* The same mask three times over: pressed into leather, the lattice reads
+     stronger than the gilt on the baize. */
+  &::before,
+  &::after {
+    --cover-lattice: var(--baize-lattice) calc(-1 * var(--cover-x))
+      calc(-1 * var(--cover-y)) / var(--baize-lattice-size);
+
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    mask: var(--cover-lattice), var(--cover-lattice), var(--cover-lattice);
+  }
+
+  &::before {
+    background-color: var(--color-emboss);
+  }
+
+  &::after {
+    background-color: var(--color-paper);
+    opacity: 0.4;
+    translate: 0 1px;
+  }
+
+  @variant md {
+    box-shadow: var(--shadow-hero-md);
+  }
+}
+
+/* Gold double rule around the cover. */
+.notebook-cover-frame {
+  position: absolute;
+  inset: 24px 24px 24px 40px;
+  z-index: 1;
+  border: 3px double var(--color-gilt);
+  border-radius: 6px;
+
+  @variant md {
+    inset: 40px 40px 40px 64px;
+  }
+}
+
+.notebook-cover-title {
+  position: absolute;
+  inset: 0 0 auto;
+  top: min(32%, 280px);
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+/* The inside of the cover: endpaper, seen as the board turns over. */
+.notebook-cover-back {
+  transform: rotateY(180deg);
+  background: var(--paper-grain) 0 0 / var(--paper-grain-size)
+    var(--color-paper-aged);
+}
+
+@keyframes notebook-cover-open {
+  to {
+    transform: rotateY(-180deg);
+    visibility: hidden;
+  }
+}
+
+@keyframes notebook-cover-fade {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-cover] .notebook-cover {
+    animation: notebook-cover-fade 250ms ease-out 200ms forwards;
+  }
+
+  .notebook-cover-board {
+    animation: none;
+  }
+}
+
+/*
+ * Strikes of the pen (src/lib/ink.ts). [data-ink-text] is the text the line
+ * goes through: a band of ink grows from the left, and since the band is the
+ * background of an inline element, it runs along the lines one after another,
+ * like a hand. Red by default; a row sets --ink-color for another ink.
+ */
+[data-ink-text] {
+  background-image: linear-gradient(
+    var(--ink-color, var(--color-ink-red)),
+    var(--ink-color, var(--color-ink-red))
+  );
+  background-repeat: no-repeat;
+  background-position: 0 60%;
+  background-size: 0 0.09em;
+  box-decoration-break: slice;
+}
+
+[data-ink="struck"] [data-ink-text] {
+  animation: ink-strike 450ms ease-in forwards;
+}
+
+@keyframes ink-strike {
+  to {
+    background-size: 100% 0.09em;
+  }
+}
+
+/* The tick on the margin after «Связались»: written left to right. */
+[data-ink-tick] {
+  visibility: hidden;
+}
+
+[data-ink="struck"] [data-ink-tick] {
+  visibility: visible;
+  animation: ink-tick 300ms ease-out 150ms both;
+}
+
+[data-ink="struck"] [data-contacted-for] {
+  visibility: hidden;
+}
+
+@keyframes ink-tick {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/*
+ * Page turns (Cover in src/components/paper.tsx). Forward: the old page turns
+ * over to the left around its spine and uncovers the new one. Back: the new
+ * page turns in from the left over the old one. The rest of the window stays
+ * as it is.
+ */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+::view-transition-group(.page-leave-forward),
+::view-transition-group(.page-enter-back) {
+  z-index: 1;
+}
+
+::view-transition-group(.page-leave-forward),
+::view-transition-group(.page-enter-forward),
+::view-transition-group(.page-leave-back),
+::view-transition-group(.page-enter-back) {
+  animation: none;
+}
+
+::view-transition-old(.page-leave-forward) {
+  transform-origin: 0 50%;
+  animation: page-turn-away 320ms ease-in both;
+}
+
+::view-transition-new(.page-enter-back) {
+  transform-origin: 0 50%;
+  animation: page-turn-in 320ms ease-out both;
+}
+
+::view-transition-new(.page-enter-forward),
+::view-transition-old(.page-leave-back) {
+  animation: none;
+}
+
+/* The page folds flat towards its spine. A 3D turn needs a perspective
+   point, and pages thousands of pixels tall get skewed out of shape. */
+@keyframes page-turn-away {
+  to {
+    transform: scaleX(0);
+    filter: brightness(0.75);
+  }
+}
+
+@keyframes page-turn-in {
+  from {
+    transform: scaleX(0);
+    filter: brightness(0.75);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
   }
 }

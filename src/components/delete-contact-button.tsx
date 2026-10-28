@@ -11,6 +11,8 @@ import {
 } from "@/app/actions";
 import { ConfirmDelete, toastWithUndo } from "@/components/confirm-delete";
 import { Button } from "@/components/ui/button";
+import { forgetBookmark } from "@/lib/bookmark-store";
+import { findInkTarget } from "@/lib/ink";
 import { showContactInList } from "@/lib/reveal-contact";
 
 const RESTORE_FAILED =
@@ -52,6 +54,7 @@ export function DeleteContactButton({
   const router = useRouter();
 
   function handleDeleted(contact: DeletedContact) {
+    forgetBookmark(contact.id);
     // Replace, not push: "Back" must not lead to the card that is gone.
     router.replace("/");
     toastWithUndo({
@@ -71,6 +74,7 @@ export function DeleteContactButton({
       description={`Контакт «${name}» пропадёт вместе со всеми заметками.`}
       action={() => deleteContactAction(contactId)}
       onDeleted={handleDeleted}
+      strikeTarget={() => findInkTarget(`contact-${contactId}`)}
     >
       <Trash2Icon />
       <span className="max-md:sr-only">Удалить</span>
