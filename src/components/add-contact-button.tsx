@@ -16,22 +16,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { revealContact } from "@/lib/reveal-contact";
+import { showContactInList } from "@/lib/reveal-contact";
 
 export function AddContactButton() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
-  function handleCreated(contact: { id: number; name: string }) {
+  function handleCreated(contact: {
+    id: number;
+    name: string;
+    position: number | null;
+  }) {
     setOpen(false);
     toast.success(`${contact.name} — в списке контактов`);
-
-    // A search filter could hide the new contact, so it is cleared first.
-    if (window.location.search) {
-      router.replace("/", { scroll: false });
-    }
-
-    revealContact(contact.id);
+    showContactInList(router, contact);
   }
 
   return (

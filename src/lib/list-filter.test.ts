@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { listHref, parseListParams, showsKeepInTouch } from "./list-filter";
+import {
+  listHref,
+  parseListParams,
+  parseShown,
+  showsKeepInTouch,
+  shownFor,
+} from "./list-filter";
 
 const encoded = (text: string) => encodeURIComponent(text);
 
@@ -46,6 +52,66 @@ describe("listHref", () => {
     expect(new URL(href, "http://localhost").searchParams.get("q")).toBe(
       "а&б=в #",
     );
+  });
+});
+
+describe("listHref with the length of the list", () => {
+  it("holds a longer list in the address", () => {
+    expect(listHref({ shown: 200 })).toBe("/?shown=200");
+    expect(listHref({ q: "анна", group: 5, shown: 300 })).toBe(
+      `/?q=${encoded("анна")}&group=5&shown=300`,
+    );
+  });
+
+  it("leaves the first hundred out of the address", () => {
+    expect(listHref({ shown: 100 })).toBe("/");
+    expect(listHref({ q: "анна", shown: 100 })).toBe(`/?q=${encoded("анна")}`);
+  });
+
+  it("starts from the first hundred when the search or the group changes [Новый запрос начинает сначала]", () => {
+    // The search box and the group buttons make their links without `shown`.
+    expect(listHref({ q: "овна" })).toBe(`/?q=${encoded("овна")}`);
+    expect(listHref({ group: 5 })).toBe("/?group=5");
+  });
+});
+
+describe("parseShown", () => {
+  it("is the first hundred when the address says nothing", () => {
+    expect(parseShown({})).toBe(100);
+  });
+
+  it("is the first hundred for a wrong number [Неверное число в адресе]", () => {
+    for (const shown of ["abc", "0", "-5", "1e9", "1.5", ""]) {
+      expect(parseShown({ shown })).toBe(100);
+    }
+  });
+
+  it("is the first hundred when given twice", () => {
+    expect(parseShown({ shown: ["200", "300"] })).toBe(100);
+  });
+
+  it("rounds up to whole hundreds", () => {
+    expect(parseShown({ shown: "150" })).toBe(200);
+    expect(parseShown({ shown: "200" })).toBe(200);
+    expect(parseShown({ shown: "1" })).toBe(100);
+  });
+
+  it("reads back what listHref wrote", () => {
+    const query = Object.fromEntries(
+      new URL(listHref({ q: "анна", shown: 300 }), "http://localhost")
+        .searchParams,
+    );
+
+    expect(parseShown(query)).toBe(300);
+  });
+});
+
+describe("shownFor", () => {
+  it("is the length of the list that reaches the contact at a position", () => {
+    expect(shownFor(1)).toBe(100);
+    expect(shownFor(100)).toBe(100);
+    expect(shownFor(101)).toBe(200);
+    expect(shownFor(251)).toBe(300);
   });
 });
 

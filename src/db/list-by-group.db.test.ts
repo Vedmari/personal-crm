@@ -70,7 +70,11 @@ describe("listContacts with a group", () => {
     const analysts = await makeGroup("Аналитики");
     await createTestContact("Анна");
 
-    expect(await listContacts("", analysts)).toEqual({ items: [], total: 0 });
+    expect(await listContacts("", analysts)).toEqual({
+      items: [],
+      matched: 0,
+      total: 0,
+    });
   });
 
   it("searches inside the group only [Поиск внутри группы]", async () => {
@@ -106,6 +110,7 @@ describe("listContacts with a group", () => {
 
     expect(await listContacts("петров", friends)).toEqual({
       items: [],
+      matched: 0,
       total: 1,
     });
   });

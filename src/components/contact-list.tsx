@@ -2,10 +2,11 @@ import Link from "next/link";
 
 import { ContactAvatar } from "@/components/contact-avatar";
 import { DATE_LINE_CLASS_NAME } from "@/components/paper";
+import { ShowMoreLink } from "@/components/show-more-link";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listContacts, type ContactListItem } from "@/db/queries";
 import { formatCount, getGroupLetter, pluralize } from "@/lib/format";
-import { listHref } from "@/lib/list-filter";
+import { LIST_PAGE_SIZE, listHref, parseShown } from "@/lib/list-filter";
 import { readListFilter } from "@/lib/read-list-filter";
 
 const CONTACT_FORMS = ["контакт", "контакта", "контактов"] as const;
@@ -98,7 +99,12 @@ export async function ContactList({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { search, group } = await readListFilter(searchParams);
-  const { items, total } = await listContacts(search, group?.id ?? null);
+  const shown = parseShown(await searchParams);
+  const { items, matched, total } = await listContacts(
+    search,
+    group?.id ?? null,
+    shown,
+  );
 
   // With a group, `total` is the size of the group, not of the whole book.
   if (total === 0 && group) {
@@ -150,7 +156,7 @@ export async function ContactList({
 
   const groupSuffix = group ? ` в группе «${group.name}»` : "";
   const counter = search
-    ? `Найдено ${formatCount(items.length)} из ${formatCount(total)}${groupSuffix}`
+    ? `Найдено ${formatCount(matched)} из ${formatCount(total)}${groupSuffix}`
     : group
       ? `В группе «${group.name}» — ${formatCount(total)} ${pluralize(total, CONTACT_FORMS)}`
       : `${formatCount(total)} ${pluralize(total, CONTACT_FORMS)}`;
@@ -184,6 +190,15 @@ export async function ContactList({
           </ul>
         </section>
       ))}
+      <ShowMoreLink
+        shown={shown}
+        remaining={Math.min(LIST_PAGE_SIZE, matched - items.length)}
+        href={listHref({
+          q: search,
+          group: group?.id ?? null,
+          shown: shown + LIST_PAGE_SIZE,
+        })}
+      />
     </>
   );
 }
