@@ -4,11 +4,15 @@
 #
 #   deploy.sh <image> <tag> <registry-user>    (registry token on stdin)
 #
-# Steps: pull the image -> start Postgres -> apply migrations in a one-off
-# container -> start the app on the new image -> smoke-check /health ->
-# keep only the current and the previous image.
+# Steps: pull the image -> start Postgres -> back up the database -> apply
+# migrations in a one-off container -> start the app on the new image ->
+# smoke-check /health -> keep only the current and the previous image.
 #
-# Failed migrations stop the deploy: the app keeps running the previous image.
+# The backup goes to /opt/crm/prod/backups; its name carries the version that
+# ran before this deploy. It is restored only by hand with deploy/restore.sh.
+#
+# A failed backup or failed migrations stop the deploy: the app keeps running
+# the previous image.
 # A failed smoke check stops the deploy with an error. There is no automatic
 # rollback: it is started by hand with deploy/rollback.sh.
 set -euo pipefail
@@ -45,6 +49,12 @@ rm -rf "$docker_config"
 
 step "Starting the database"
 compose up --detach --wait postgres
+
+step "Backing up the database (version before this deploy: ${current_tag:-unknown})"
+if ! backup_file="$(backup_database "$current_tag")"; then
+  fail "Backup failed. Migrations were not applied: the app keeps running the previous version${current_tag:+ ($current_tag)}."
+fi
+echo "$backup_file ($(file_size "$backup_file"))"
 
 step "Applying migrations"
 if ! compose run --rm migrate; then
