@@ -1,6 +1,8 @@
-# Shared helpers for deploy.sh and rollback.sh. Sourced, not run directly.
+# Shared helpers for the scripts in deploy/. Sourced, not run directly.
 
 RELEASE_FILE="$APP_DIR/release.env"
+# Database backups hold personal data: the folder is 700, the files are 600.
+BACKUP_DIR="$APP_DIR/backups"
 
 step() {
   printf '\n==> %s\n' "$*"
@@ -27,6 +29,38 @@ read_release() {
 
 write_release() {
   printf 'IMAGE=%s\nIMAGE_TAG=%s\nPREVIOUS_IMAGE_TAG=%s\n' "$1" "$2" "$3" >"$RELEASE_FILE"
+}
+
+file_size() {
+  du -h "$1" | cut -f1
+}
+
+# Checks that a file is a complete database dump that pg_restore can read.
+check_backup() {
+  [ -s "$1" ] && compose exec -T postgres pg_restore --list <"$1" >/dev/null
+}
+
+# Dumps the production database into $BACKUP_DIR and prints the file path.
+#   $1 - version of the app the data belongs to (commit SHA), may be empty
+#   $2 - optional word added to the end of the name
+# Name: <UTC date>_<UTC time>_<first 7 characters of the SHA>[_<word>].dump,
+# for example 2026-11-06_153012_d7ee8bf.dump.
+backup_database() {
+  local version="${1:-unknown}" suffix="${2:+_$2}" file
+  file="$BACKUP_DIR/$(date -u +%Y-%m-%d_%H%M%S)_${version:0:7}${suffix}.dump"
+
+  mkdir -p "$BACKUP_DIR" && chmod 700 "$BACKUP_DIR" || return 1
+  # The dump is written under a temporary name and renamed only after it is
+  # checked, so a failed or cut-off dump never looks like a ready backup.
+  # User and database names come from the container's own environment.
+  if ! (umask 077 && compose exec -T postgres sh -c \
+    'pg_dump --username="$POSTGRES_USER" --dbname="$POSTGRES_DB" --format=custom' \
+    >"$file.partial") || ! check_backup "$file.partial"; then
+    rm -f "$file.partial"
+    return 1
+  fi
+  mv "$file.partial" "$file" || return 1
+  printf '%s\n' "$file"
 }
 
 wait_for_health() {
