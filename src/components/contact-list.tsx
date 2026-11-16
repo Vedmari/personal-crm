@@ -5,6 +5,7 @@ import { DATE_LINE_CLASS_NAME } from "@/components/paper";
 import { ShowMoreLink } from "@/components/show-more-link";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listContacts, type ContactListItem } from "@/db/queries";
+import { requireUserId } from "@/lib/current-user";
 import { formatCount, getGroupLetter, pluralize } from "@/lib/format";
 import {
   letterAnchor,
@@ -104,9 +105,11 @@ export async function ContactList({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const ownerId = await requireUserId();
   const { search, group } = await readListFilter(searchParams);
   const shown = parseShown(await searchParams);
   const { items, matched, total } = await listContacts(
+    ownerId,
     search,
     group?.id ?? null,
     shown,

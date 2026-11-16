@@ -3,12 +3,21 @@
 import { eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { contacts, notes, type KeepInTouchInterval } from "@/db/schema";
+import { contacts, groups, notes, type KeepInTouchInterval } from "@/db/schema";
 
-export async function createTestContact(name: string): Promise<number> {
+import { USER_A } from "./signed-in";
+
+// Users A and B are made before every test (test/setup-db.ts), and the test
+// is signed in as A. Rows belong to A unless a test says otherwise.
+export { signInAs, USER_A, USER_B } from "./signed-in";
+
+export async function createTestContact(
+  name: string,
+  ownerId: string = USER_A,
+): Promise<number> {
   const [row] = await db
     .insert(contacts)
-    .values({ name })
+    .values({ name, ownerId })
     .returning({ id: contacts.id });
 
   return row.id;
@@ -17,13 +26,26 @@ export async function createTestContact(name: string): Promise<number> {
 // Many contacts in one insert. Returns their ids in the order of `people`.
 export async function createTestContacts(
   people: { name: string; about?: string }[],
+  ownerId: string = USER_A,
 ): Promise<number[]> {
   const rows = await db
     .insert(contacts)
-    .values(people)
+    .values(people.map((person) => ({ ...person, ownerId })))
     .returning({ id: contacts.id });
 
   return rows.map((row) => row.id);
+}
+
+export async function createTestGroup(
+  name: string,
+  ownerId: string = USER_A,
+): Promise<number> {
+  const [row] = await db
+    .insert(groups)
+    .values({ name, ownerId })
+    .returning({ id: groups.id });
+
+  return row.id;
 }
 
 // A note written at a given moment, e.g. "2026-09-10T12:00:00+03:00".

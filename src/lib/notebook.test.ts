@@ -90,11 +90,27 @@ describe("coverScript", () => {
 });
 
 describe("readBookmark", () => {
-  it("reads a saved bookmark", () => {
-    expect(readBookmark('{"id":12,"name":"Анна Петрова"}')).toEqual({
+  const ANNA = '{"id":12,"name":"Анна Петрова","userId":"user-a"}';
+
+  it("reads the bookmark of the signed-in user [Закладка ведёт к последней карточке]", () => {
+    expect(readBookmark(ANNA, "user-a")).toEqual({
       id: 12,
       name: "Анна Петрова",
     });
+  });
+
+  it("gives nothing of another user's bookmark [В браузере вошёл другой пользователь]", () => {
+    expect(readBookmark(ANNA, "user-b")).toBeNull();
+  });
+
+  it("gives nothing of a bookmark saved before the sign-in, without a user [В браузере вошёл другой пользователь]", () => {
+    expect(
+      readBookmark('{"id":12,"name":"Анна Петрова"}', "user-a"),
+    ).toBeNull();
+  });
+
+  it("gives nothing while nobody is signed in", () => {
+    expect(readBookmark(ANNA, null)).toBeNull();
   });
 
   it("ignores anything that is not a bookmark", () => {
@@ -103,13 +119,14 @@ describe("readBookmark", () => {
       "",
       "{",
       "[]",
-      '{"id":12}',
-      '{"id":"12","name":"Анна"}',
-      '{"id":0,"name":"Анна"}',
-      '{"id":1.5,"name":"Анна"}',
-      '{"id":12,"name":""}',
+      '{"id":12,"userId":"user-a"}',
+      '{"id":"12","name":"Анна","userId":"user-a"}',
+      '{"id":0,"name":"Анна","userId":"user-a"}',
+      '{"id":1.5,"name":"Анна","userId":"user-a"}',
+      '{"id":12,"name":"","userId":"user-a"}',
+      '{"id":12,"name":"Анна","userId":12}',
     ]) {
-      expect(readBookmark(raw)).toBeNull();
+      expect(readBookmark(raw, "user-a")).toBeNull();
     }
   });
 });

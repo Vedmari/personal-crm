@@ -29,7 +29,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: "db",
-          include: ["src/**/*.db.test.ts"],
+          include: ["src/**/*.db.test.ts", "scripts/**/*.db.test.ts"],
           globalSetup: ["test/global-setup.ts"],
           setupFiles: ["test/setup-db.ts"],
           fileParallelism: false,

@@ -1,12 +1,18 @@
 // Fills an empty database with test contacts, notes and groups.
 // Run with: pnpm db:seed
 //
+// The data belongs to the owner, the user with the email of OWNER_EMAIL: the
+// script finds that user, or creates them when nobody has signed in with the
+// email yet. Without OWNER_EMAIL it stops before inserting anything.
+//
 // The script only inserts: it never deletes or overwrites data,
 // and it refuses to run when the contacts table already has rows.
 // It is executed by Node.js directly (no bundler), which is why the file is
-// an ES module (.mts) and the local import keeps its .ts extension.
+// an ES module (.mts) and the local imports keep their .ts extension.
 
-import { count } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+
+import { count, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
@@ -15,8 +21,10 @@ import {
   contacts,
   groups,
   notes,
+  user,
   type KeepInTouchInterval,
 } from "../src/db/schema.ts";
+import { normalizeEmail } from "../src/lib/validation.ts";
 
 const CONTACT_COUNT = 1000;
 const RANDOM_SEED = 20261008;
@@ -986,7 +994,8 @@ function pickGroups(): number[] {
 // --- Assembling contacts ---
 
 type SeedContact = {
-  contact: typeof contacts.$inferInsert;
+  // The owner is added when the rows are inserted.
+  contact: Omit<typeof contacts.$inferInsert, "ownerId">;
   noteRows: { body: string; createdAt: Date }[];
 };
 
@@ -1073,6 +1082,14 @@ async function main(): Promise<void> {
     );
   }
 
+  const ownerEmail = normalizeEmail(process.env.OWNER_EMAIL ?? "");
+
+  if (!ownerEmail) {
+    throw new Error(
+      "OWNER_EMAIL is not set. Add it to .env: the test data belongs to the user with this email.",
+    );
+  }
+
   const client = postgres(url, { max: 1 });
   const db = drizzle(client);
 
@@ -1095,9 +1112,27 @@ async function main(): Promise<void> {
     let insertedMemberships = 0;
 
     await db.transaction(async (tx) => {
+      // The same kind of user as a first sign-in creates: no name, the email
+      // is confirmed by the sign-in link itself.
+      await tx
+        .insert(user)
+        .values({
+          id: randomUUID(),
+          name: "",
+          email: ownerEmail,
+          emailVerified: true,
+        })
+        .onConflictDoNothing({ target: user.email });
+
+      const [owner] = await tx
+        .select({ id: user.id })
+        .from(user)
+        .where(eq(user.email, ownerEmail));
+      const ownerId = owner.id;
+
       const insertedGroups = await tx
         .insert(groups)
-        .values(GROUP_NAMES.map((name) => ({ name })))
+        .values(GROUP_NAMES.map((name) => ({ ownerId, name })))
         .returning({ id: groups.id, name: groups.name });
       const groupIdByName = new Map(
         insertedGroups.map((row) => [row.name, row.id]),
@@ -1106,7 +1141,7 @@ async function main(): Promise<void> {
       for (const batch of chunk(seedContacts, 250)) {
         const inserted = await tx
           .insert(contacts)
-          .values(batch.map((item) => item.contact))
+          .values(batch.map((item) => ({ ...item.contact, ownerId })))
           .returning({ id: contacts.id, name: contacts.name });
 
         // Names are unique within the seed, so they map rows back to ids.

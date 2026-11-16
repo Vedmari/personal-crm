@@ -19,7 +19,12 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # The database is not reachable during the build. Pages read it only at request
 # time, but src/db/index.ts requires the variable to be set when it is imported.
-RUN DATABASE_URL=postgresql://build:build@localhost:5432/build pnpm build \
+# Better Auth checks its secret when src/lib/auth.ts is imported, and `next build`
+# runs in production mode, so the build gets a stand-in secret too. Neither
+# value stays in the image: the server passes the real ones (deploy/compose.yaml).
+RUN DATABASE_URL=postgresql://build:build@localhost:5432/build \
+    BETTER_AUTH_SECRET=build-only-stand-in-secret-not-used-at-runtime \
+    pnpm build \
     && rm -rf .next/cache
 
 FROM base AS prod-deps
@@ -35,9 +40,11 @@ COPY --from=build --chown=node:node /app/.next ./.next
 COPY public ./public
 COPY package.json next.config.ts ./
 # Migrations and the test data generator run from this image as one-off containers.
+# Both read the schema, and normalize OWNER_EMAIL like the sign-in does.
 COPY drizzle ./drizzle
 COPY scripts ./scripts
 COPY src/db/schema.ts ./src/db/schema.ts
+COPY src/lib/validation.ts ./src/lib/validation.ts
 USER node
 EXPOSE 3000
 CMD ["node_modules/.bin/next", "start", "--hostname", "0.0.0.0", "--port", "3000"]

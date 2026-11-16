@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { GROUP_NAME_MAX_LENGTH, parseGroupName } from "./validation";
+import {
+  GROUP_NAME_MAX_LENGTH,
+  normalizeEmail,
+  parseContactForm,
+  parseGroupName,
+  parseLoginEmail,
+} from "./validation";
 
 describe("parseGroupName", () => {
   it("cuts spaces from the ends [Создать группу на странице «Группы»]", () => {
@@ -58,3 +64,55 @@ describe("parseGroupName", () => {
     expect(parseGroupName(`  ${name}  `)).toEqual({ ok: true, data: name });
   });
 });
+
+describe("normalizeEmail", () => {
+  it("cuts spaces and lowers the letters [Пробелы и большие буквы]", () => {
+    expect(normalizeEmail("  Anna@Example.COM ")).toBe("anna@example.com");
+  });
+});
+
+describe("parseLoginEmail", () => {
+  it("returns the email in one spelling [Пробелы и большие буквы]", () => {
+    expect(parseLoginEmail("  Anna@Example.COM ")).toEqual({
+      ok: true,
+      data: "anna@example.com",
+    });
+  });
+
+  it("refuses an address without a domain [Ошибка в адресе]", () => {
+    expect(parseLoginEmail("anna@")).toEqual({
+      ok: false,
+      errors: { email: "Проверьте адрес почты" },
+    });
+  });
+
+  it("refuses an empty field [Ошибка в адресе]", () => {
+    for (const value of ["", "   ", null, undefined, 42]) {
+      expect(parseLoginEmail(value)).toEqual({
+        ok: false,
+        errors: { email: "Проверьте адрес почты" },
+      });
+    }
+  });
+
+  it("checks the format the way the email of a contact is checked", () => {
+    for (const value of ["anna", "anna@example", "an na@example.com"]) {
+      expect(parseLoginEmail(value).ok).toBe(false);
+      expect(parseContactForm(formOf({ name: "Анна", email: value })).ok).toBe(
+        false,
+      );
+    }
+
+    expect(parseLoginEmail(`${"a".repeat(250)}@b.ru`).ok).toBe(false);
+  });
+});
+
+function formOf(fields: Record<string, string>): FormData {
+  const form = new FormData();
+
+  for (const [key, value] of Object.entries(fields)) {
+    form.set(key, value);
+  }
+
+  return form;
+}

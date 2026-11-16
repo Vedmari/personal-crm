@@ -22,6 +22,7 @@ import {
   setKeepInTouch,
   updateContact,
 } from "@/db/queries";
+import { requireUserId } from "@/lib/current-user";
 import {
   parseContactForm,
   parseId,
@@ -61,14 +62,16 @@ type ShownContact = { id: number; name: string; position: number | null };
 export async function createContactAction(
   formData: FormData,
 ): Promise<ActionResult<ContactField, ShownContact>> {
+  const ownerId = await requireUserId();
+
   const parsed = parseContactForm(formData);
 
   if (!parsed.ok) {
     return { ok: false, errors: parsed.errors };
   }
 
-  const contact = await createContact(parsed.data);
-  const position = await contactPosition(contact.id);
+  const contact = await createContact(ownerId, parsed.data);
+  const position = await contactPosition(ownerId, contact.id);
 
   refresh();
 
@@ -81,6 +84,8 @@ export async function updateContactAction(
   updatedAt: string,
   formData: FormData,
 ): Promise<ActionResult<ContactField>> {
+  const ownerId = await requireUserId();
+
   const id = parseId(contactId);
   const expectedUpdatedAt = parseTimestamp(updatedAt);
 
@@ -94,7 +99,12 @@ export async function updateContactAction(
     return { ok: false, errors: parsed.errors };
   }
 
-  const result = await updateContact(id, parsed.data, expectedUpdatedAt);
+  const result = await updateContact(
+    ownerId,
+    id,
+    parsed.data,
+    expectedUpdatedAt,
+  );
 
   if (result === "not_found") {
     return { ok: false, errors: {}, message: CONTACT_NOT_FOUND };
@@ -115,6 +125,8 @@ export async function setKeepInTouchAction(
   contactId: number,
   every: string | null,
 ): Promise<ActionResult<never>> {
+  const ownerId = await requireUserId();
+
   const id = parseId(contactId);
   const interval = parseKeepInTouch(every);
 
@@ -122,7 +134,7 @@ export async function setKeepInTouchAction(
     return { ok: false, errors: {}, message: KEEP_IN_TOUCH_INVALID };
   }
 
-  if (!(await setKeepInTouch(id, interval))) {
+  if (!(await setKeepInTouch(ownerId, id, interval))) {
     return { ok: false, errors: {}, message: CONTACT_NOT_FOUND };
   }
 
@@ -136,13 +148,15 @@ export async function setKeepInTouchAction(
 export async function createGroupAction(
   formData: FormData,
 ): Promise<ActionResult<"name", { id: number; name: string }>> {
+  const ownerId = await requireUserId();
+
   const parsed = parseGroupName(formData.get("name"));
 
   if (!parsed.ok) {
     return { ok: false, errors: parsed.errors };
   }
 
-  const { group, created } = await createGroup(parsed.data);
+  const { group, created } = await createGroup(ownerId, parsed.data);
 
   if (!created) {
     return {
@@ -162,6 +176,8 @@ export async function renameGroupAction(
   groupId: number,
   formData: FormData,
 ): Promise<ActionResult<"name", { id: number; name: string }>> {
+  const ownerId = await requireUserId();
+
   const id = parseId(groupId);
 
   if (id === null) {
@@ -174,7 +190,7 @@ export async function renameGroupAction(
     return { ok: false, errors: parsed.errors };
   }
 
-  const result = await renameGroup(id, parsed.data);
+  const result = await renameGroup(ownerId, id, parsed.data);
 
   if (result.status === "not_found") {
     return { ok: false, errors: {}, message: GROUP_NOT_FOUND };
@@ -197,8 +213,10 @@ export async function renameGroupAction(
 export async function deleteGroupAction(
   groupId: number,
 ): Promise<ActionResult<never, { id: number; name: string }>> {
+  const ownerId = await requireUserId();
+
   const id = parseId(groupId);
-  const group = id === null ? undefined : await deleteGroup(id);
+  const group = id === null ? undefined : await deleteGroup(ownerId, id);
 
   if (!group) {
     return { ok: false, errors: {}, message: GROUP_NOT_FOUND };
@@ -216,6 +234,8 @@ export async function setContactGroupAction(
   groupId: number,
   member: boolean,
 ): Promise<ActionResult<never>> {
+  const ownerId = await requireUserId();
+
   const contact = parseId(contactId);
   const group = parseId(groupId);
 
@@ -227,7 +247,12 @@ export async function setContactGroupAction(
     return { ok: false, errors: {}, message: GROUP_NOT_FOUND };
   }
 
-  const result = await setContactGroup(contact, group, member === true);
+  const result = await setContactGroup(
+    ownerId,
+    contact,
+    group,
+    member === true,
+  );
 
   if (result === "contact_not_found") {
     return { ok: false, errors: {}, message: CONTACT_NOT_FOUND };
@@ -249,9 +274,11 @@ export async function createGroupForContactAction(
   contactId: number,
   formData: FormData,
 ): Promise<ActionResult<"name", { id: number; name: string }>> {
+  const ownerId = await requireUserId();
+
   const contact = parseId(contactId);
 
-  if (contact === null || !(await getContact(contact))) {
+  if (contact === null || !(await getContact(ownerId, contact))) {
     return { ok: false, errors: {}, message: CONTACT_NOT_FOUND };
   }
 
@@ -261,8 +288,8 @@ export async function createGroupForContactAction(
     return { ok: false, errors: parsed.errors };
   }
 
-  const { group } = await createGroup(parsed.data);
-  const result = await setContactGroup(contact, group.id, true);
+  const { group } = await createGroup(ownerId, parsed.data);
+  const result = await setContactGroup(ownerId, contact, group.id, true);
 
   if (result === "contact_not_found") {
     return { ok: false, errors: {}, message: CONTACT_NOT_FOUND };
@@ -281,9 +308,11 @@ export async function addNoteAction(
   contactId: number,
   formData: FormData,
 ): Promise<ActionResult<"body">> {
+  const ownerId = await requireUserId();
+
   const id = parseId(contactId);
 
-  if (id === null || !(await getContact(id))) {
+  if (id === null || !(await getContact(ownerId, id))) {
     return { ok: false, errors: {}, message: CONTACT_NOT_FOUND };
   }
 
@@ -293,7 +322,10 @@ export async function addNoteAction(
     return { ok: false, errors: parsed.errors };
   }
 
-  await addNote(id, parsed.data);
+  // Undefined when the contact was deleted in another tab just now.
+  if (!(await addNote(ownerId, id, parsed.data))) {
+    return { ok: false, errors: {}, message: CONTACT_NOT_FOUND };
+  }
 
   refresh();
 
@@ -305,13 +337,20 @@ export async function addNoteAction(
 export async function markContactedAction(
   contactId: number,
 ): Promise<ActionResult<never, { noteId: number }>> {
+  const ownerId = await requireUserId();
+
   const id = parseId(contactId);
 
-  if (id === null || !(await getContact(id))) {
+  if (id === null || !(await getContact(ownerId, id))) {
     return { ok: false, errors: {}, message: CONTACT_NOT_FOUND };
   }
 
-  const note = await addContactedNote(id);
+  // Undefined when the contact was deleted in another tab just now.
+  const note = await addContactedNote(ownerId, id);
+
+  if (!note) {
+    return { ok: false, errors: {}, message: CONTACT_NOT_FOUND };
+  }
 
   refresh();
 
@@ -321,9 +360,11 @@ export async function markContactedAction(
 export async function undoMarkContactedAction(
   noteId: number,
 ): Promise<ActionResult<never>> {
+  const ownerId = await requireUserId();
+
   const id = parseId(noteId);
 
-  if (id === null || !(await eraseContactedNote(id))) {
+  if (id === null || !(await eraseContactedNote(ownerId, id))) {
     return { ok: false, errors: {}, message: UNDO_CONTACTED_TOO_LATE };
   }
 
@@ -336,8 +377,10 @@ export async function undoMarkContactedAction(
 export async function deleteContactAction(
   contactId: number,
 ): Promise<ActionResult<never, { id: number; name: string }>> {
+  const ownerId = await requireUserId();
+
   const id = parseId(contactId);
-  const contact = id === null ? undefined : await deleteContact(id);
+  const contact = id === null ? undefined : await deleteContact(ownerId, id);
 
   if (!contact) {
     return { ok: false, errors: {}, message: CONTACT_NOT_FOUND };
@@ -351,14 +394,16 @@ export async function deleteContactAction(
 export async function restoreContactAction(
   contactId: number,
 ): Promise<ActionResult<never, ShownContact>> {
+  const ownerId = await requireUserId();
+
   const id = parseId(contactId);
-  const contact = id === null ? undefined : await restoreContact(id);
+  const contact = id === null ? undefined : await restoreContact(ownerId, id);
 
   if (!contact) {
     return { ok: false, errors: {}, message: RESTORE_TOO_LATE };
   }
 
-  const position = await contactPosition(contact.id);
+  const position = await contactPosition(ownerId, contact.id);
 
   refresh();
 
@@ -368,19 +413,23 @@ export async function restoreContactAction(
 export async function eraseDeletedContactAction(
   contactId: number,
 ): Promise<void> {
+  const ownerId = await requireUserId();
+
   const id = parseId(contactId);
 
   if (id !== null) {
-    await eraseDeletedContact(id);
+    await eraseDeletedContact(ownerId, id);
   }
 }
 
 export async function deleteNoteAction(
   noteId: number,
 ): Promise<ActionResult<never>> {
+  const ownerId = await requireUserId();
+
   const id = parseId(noteId);
 
-  if (id === null || !(await deleteNote(id))) {
+  if (id === null || !(await deleteNote(ownerId, id))) {
     return { ok: false, errors: {}, message: NOTE_NOT_FOUND };
   }
 
@@ -392,9 +441,11 @@ export async function deleteNoteAction(
 export async function restoreNoteAction(
   noteId: number,
 ): Promise<ActionResult<never>> {
+  const ownerId = await requireUserId();
+
   const id = parseId(noteId);
 
-  if (id === null || !(await restoreNote(id))) {
+  if (id === null || !(await restoreNote(ownerId, id))) {
     return { ok: false, errors: {}, message: RESTORE_TOO_LATE };
   }
 
@@ -404,9 +455,11 @@ export async function restoreNoteAction(
 }
 
 export async function eraseDeletedNoteAction(noteId: number): Promise<void> {
+  const ownerId = await requireUserId();
+
   const id = parseId(noteId);
 
   if (id !== null) {
-    await eraseDeletedNote(id);
+    await eraseDeletedNote(ownerId, id);
   }
 }

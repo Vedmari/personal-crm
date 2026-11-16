@@ -1,7 +1,14 @@
 # Production stack on the server: compose project "prod" in /opt/crm/prod.
 # Started only by deploy/deploy.sh and deploy/rollback.sh, which pass:
-#   - /opt/crm/prod/.env  - POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB (secrets, mode 600)
+#   - /opt/crm/prod/.env  - secrets and settings, mode 600:
+#       POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB - the database;
+#       BETTER_AUTH_SECRET, BETTER_AUTH_URL           - the sign-in;
+#       SMTP_URL                                      - where sign-in emails go (Resend);
+#       OWNER_EMAIL                                   - the owner of the data that was
+#                                                       there before the sign-in
 #   - IMAGE, IMAGE_TAG    - the app image and its version (git commit SHA)
+# A setting that is not there stops the deploy at its first step
+# (`compose config`), before the backup and the migrations.
 # Local development uses docker-compose.yml in the repository root instead.
 
 x-logging:
@@ -33,10 +40,15 @@ services:
     logging: *logging
 
   # One-off step: applies migrations and exits. Never started by `up`.
+  # Also runs the test data generator (deploy/seed.sh).
   migrate:
     image: ${IMAGE:?IMAGE is set by the deploy script}:${IMAGE_TAG:?IMAGE_TAG is set by the deploy script}
     command: ["node", "scripts/migrate.mts"]
-    environment: *database-url
+    environment:
+      <<: *database-url
+      # The contacts, notes and groups that are already in the database, and
+      # the test data, go to the user with this email.
+      OWNER_EMAIL: ${OWNER_EMAIL:?Set OWNER_EMAIL in /opt/crm/prod/.env}
     depends_on:
       postgres:
         condition: service_healthy
@@ -46,7 +58,12 @@ services:
   app:
     image: ${IMAGE}:${IMAGE_TAG}
     restart: unless-stopped
-    environment: *database-url
+    environment:
+      <<: *database-url
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in /opt/crm/prod/.env}
+      # https://app.lichnaya-crm.ru: the links in the letters lead here.
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?Set BETTER_AUTH_URL in /opt/crm/prod/.env}
+      SMTP_URL: ${SMTP_URL:?Set SMTP_URL in /opt/crm/prod/.env}
     ports:
       # Only nginx on the same server can reach the app.
       - "127.0.0.1:3000:3000"

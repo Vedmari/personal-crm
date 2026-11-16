@@ -1,4 +1,4 @@
-# Local development only: Postgres is the single service that runs in a container.
+# Local development only: Postgres and the Mailpit mail catcher run in containers.
 # Run with Podman: `podman compose up -d` (the file keeps the standard Compose name).
 # Connection settings come from .env (see .env.example).
 services:
@@ -19,6 +19,17 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  # Catches every email the app sends on this computer: nothing reaches a real
+  # mailbox. The app sends to SMTP port 1025, the letters are read at
+  # http://localhost:8025 (and by the e2e tests through its API).
+  mailpit:
+    image: axllent/mailpit:v1.33.0
+    restart: unless-stopped
+    ports:
+      # Bound to localhost, like the database.
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
 
 volumes:
   postgres_data:

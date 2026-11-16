@@ -25,21 +25,25 @@ type Book = {
 };
 
 function book({ size, about = () => "", friends }: Book) {
-  return async (sql: Sql) => {
+  return async (sql: Sql, ownerId: string) => {
     const people = Array.from(
       { length: size - SEEDED_CONTACTS.length },
       (_, index) => {
         const place = FIRST_PLACE + index;
-        return { name: personName(place), about: about(place) };
+        return {
+          name: personName(place),
+          about: about(place),
+          owner_id: ownerId,
+        };
       },
     );
     const ids: { id: number; name: string }[] = await sql`
-      insert into contacts ${sql(people, "name", "about")} returning id, name
+      insert into contacts ${sql(people, "name", "about", "owner_id")} returning id, name
     `;
 
     if (friends) {
       const [group] = await sql<{ id: number }[]>`
-        insert into groups (name) values ('Друзья') returning id
+        insert into groups (owner_id, name) values (${ownerId}, 'Друзья') returning id
       `;
       const members = ids.filter((row) =>
         friends.map(personName).includes(row.name),

@@ -8,6 +8,7 @@ import {
   createTestContact,
   formOf,
   markContactDeleted,
+  USER_A,
 } from "../../test/factories";
 import { createGroupAction } from "./actions";
 
@@ -16,7 +17,7 @@ describe("createGroupAction", () => {
     const result = await createGroupAction(formOf({ name: " Теннис " }));
 
     expect(result).toMatchObject({ ok: true, data: { name: "Теннис" } });
-    expect(await listGroups()).toEqual([
+    expect(await listGroups(USER_A)).toEqual([
       expect.objectContaining({ name: "Теннис", contactCount: 0 }),
     ]);
   });
@@ -30,7 +31,7 @@ describe("createGroupAction", () => {
       ok: false,
       errors: { name: "Группа «Семья» уже есть" },
     });
-    expect(await listGroups()).toHaveLength(1);
+    expect(await listGroups(USER_A)).toHaveLength(1);
   });
 
   it("treats е and ё as one letter [«Е» и «ё» считаются одной буквой]", async () => {
@@ -42,7 +43,7 @@ describe("createGroupAction", () => {
       ok: false,
       errors: { name: "Группа «Ёлка» уже есть" },
     });
-    expect(await listGroups()).toHaveLength(1);
+    expect(await listGroups(USER_A)).toHaveLength(1);
   });
 
   it("does not make a group from an empty name [Пустое название]", async () => {
@@ -53,7 +54,7 @@ describe("createGroupAction", () => {
       });
     }
 
-    expect(await listGroups()).toEqual([]);
+    expect(await listGroups(USER_A)).toEqual([]);
   });
 
   it("does not make a group from a name of 51 characters [Слишком длинное название]", async () => {
@@ -63,7 +64,7 @@ describe("createGroupAction", () => {
       ok: false,
       errors: { name: "Слишком длинно: не больше 50 символов" },
     });
-    expect(await listGroups()).toEqual([]);
+    expect(await listGroups(USER_A)).toEqual([]);
   });
 
   it("makes one group when two tabs create the same name at once", async () => {
@@ -74,13 +75,13 @@ describe("createGroupAction", () => {
 
     expect(results.filter((result) => result.ok)).toHaveLength(1);
     expect(results.filter((result) => !result.ok)).toHaveLength(1);
-    expect(await listGroups()).toHaveLength(1);
+    expect(await listGroups(USER_A)).toHaveLength(1);
   });
 });
 
 describe("listGroups", () => {
   it("has no groups until the user makes one [Групп ещё нет]", async () => {
-    expect(await listGroups()).toEqual([]);
+    expect(await listGroups(USER_A)).toEqual([]);
   });
 
   it("lists groups by alphabet, the way a phone book does [Счётчики и порядок кнопок]", async () => {
@@ -88,7 +89,7 @@ describe("listGroups", () => {
       await createGroupAction(formOf({ name }));
     }
 
-    expect((await listGroups()).map((group) => group.name)).toEqual([
+    expect((await listGroups(USER_A)).map((group) => group.name)).toEqual([
       "Аналитики",
       "Друзья",
       "Еда",
@@ -107,7 +108,7 @@ describe("listGroups", () => {
       result.ok ? result.data.id : -1,
     );
     const [anna, boris, vera] = await Promise.all(
-      ["Анна", "Борис", "Вера"].map(createTestContact),
+      ["Анна", "Борис", "Вера"].map((name) => createTestContact(name)),
     );
 
     await db.insert(contactGroups).values([
@@ -118,7 +119,7 @@ describe("listGroups", () => {
     ]);
 
     expect(
-      (await listGroups()).map(({ name, contactCount }) => [
+      (await listGroups(USER_A)).map(({ name, contactCount }) => [
         name,
         contactCount,
       ]),
@@ -141,7 +142,7 @@ describe("listGroups", () => {
     ]);
     await markContactDeleted(boris);
 
-    expect(await listGroups()).toEqual([
+    expect(await listGroups(USER_A)).toEqual([
       expect.objectContaining({ name: "Теннис", contactCount: 1 }),
     ]);
   });

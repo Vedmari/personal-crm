@@ -3,14 +3,17 @@
 
 import { execFileSync } from "node:child_process";
 
+import { E2E_USER_EMAIL } from "./auth";
 import { e2eDatabaseUrl, resetDatabase } from "./database";
 
 // The address goes in the environment, not in the arguments: it holds the
-// password.
+// password. The rows an earlier run left behind go to the e2e user when a
+// migration gives every contact an owner (0005); every test empties the
+// tables anyway.
 function runScript(script: string, url: string): void {
   try {
     execFileSync(process.execPath, [script], {
-      env: { ...process.env, DATABASE_URL: url },
+      env: { ...process.env, DATABASE_URL: url, OWNER_EMAIL: E2E_USER_EMAIL },
       stdio: ["ignore", "ignore", "pipe"],
       encoding: "utf8",
     });

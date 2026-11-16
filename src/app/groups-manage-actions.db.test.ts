@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { listContactGroups, listContacts, listGroups } from "@/db/queries";
 import { contactGroups, groups } from "@/db/schema";
 
-import { createTestContact, formOf } from "../../test/factories";
+import { createTestContact, formOf, USER_A } from "../../test/factories";
 import {
   createGroupAction,
   deleteGroupAction,
@@ -34,7 +34,10 @@ async function makeGroup(
 }
 
 const summary = async () =>
-  (await listGroups()).map(({ name, contactCount }) => [name, contactCount]);
+  (await listGroups(USER_A)).map(({ name, contactCount }) => [
+    name,
+    contactCount,
+  ]);
 
 describe("the list of groups", () => {
   it("shows every group with its size, by alphabet [Список групп]", async () => {
@@ -56,7 +59,7 @@ describe("renameGroupAction", () => {
 
     expect(result).toEqual({ ok: true, data: { id, name: "Теннис" } });
     expect(await summary()).toEqual([["Теннис", 3]]);
-    expect((await listContacts("", id)).items).toHaveLength(3);
+    expect((await listContacts(USER_A, "", id)).items).toHaveLength(3);
   });
 
   it("cuts spaces from the new name", async () => {
@@ -160,11 +163,11 @@ describe("deleteGroupAction", () => {
 
     expect(result).toEqual({ ok: true, data: { id: tennis, name: "Теннис" } });
     expect(await summary()).toEqual([["Друзья", 1]]);
-    expect((await listContactGroups(anna)).map((group) => group.name)).toEqual([
-      "Друзья",
-    ]);
     expect(
-      (await listContacts("", null)).items.map((item) => item.name),
+      (await listContactGroups(USER_A, anna)).map((group) => group.name),
+    ).toEqual(["Друзья"]);
+    expect(
+      (await listContacts(USER_A, "", null)).items.map((item) => item.name),
     ).toEqual(["Анна"]);
   });
 
@@ -173,7 +176,7 @@ describe("deleteGroupAction", () => {
 
     await deleteGroupAction(id);
 
-    expect((await listContacts("", null)).total).toBe(3);
+    expect((await listContacts(USER_A, "", null)).total).toBe(3);
     expect(await db.select().from(contactGroups)).toEqual([]);
   });
 

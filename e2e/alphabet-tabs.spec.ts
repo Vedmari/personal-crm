@@ -14,7 +14,7 @@ const FIRST_YA = 240;
 const SIZE = 250;
 
 function book() {
-  return async (sql: Sql) => {
+  return async (sql: Sql, ownerId: string) => {
     const people = Array.from(
       { length: SIZE - SEEDED_CONTACTS.length },
       (_, index) => {
@@ -22,11 +22,12 @@ function book() {
         const number = String(place).padStart(3, "0");
         return {
           name: place < FIRST_YA ? `Человек ${number}` : `Яна ${number}`,
+          owner_id: ownerId,
         };
       },
     );
 
-    await sql`insert into contacts ${sql(people, "name")}`;
+    await sql`insert into contacts ${sql(people, "name", "owner_id")}`;
   };
 }
 
@@ -89,8 +90,8 @@ test("a letter further on loads the list up to it [Буква дальше по�
 test("the tabs follow the search [Вырубки следуют за поиском]", async ({
   page,
 }) => {
-  await resetDatabase(async (sql) => {
-    await sql`insert into contacts (name) values ('Яков Белов')`;
+  await resetDatabase(async (sql, ownerId) => {
+    await sql`insert into contacts (name, owner_id) values ('Яков Белов', ${ownerId})`;
   });
 
   await page.goto(`/?q=${encodeURIComponent("Яков")}`);

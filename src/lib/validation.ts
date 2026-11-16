@@ -68,6 +68,32 @@ export function parseContactForm(
   return { ok: true, data };
 }
 
+// One spelling of an email: "  Anna@Example.COM " and "anna@example.com" are
+// the same person. Used by the sign-in and by scripts/migrate.mts for
+// OWNER_EMAIL, so the owner of the old data signs in under any spelling.
+export function normalizeEmail(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+const LOGIN_EMAIL_INVALID = "Проверьте адрес почты";
+
+// The email of the sign-in form, and of any request for a sign-in link: the
+// server checks it the same way when the request does not come from the form.
+// The format check is the one of the email of a contact.
+export function parseLoginEmail(value: unknown): ParseResult<string, "email"> {
+  const email = typeof value === "string" ? normalizeEmail(value) : "";
+
+  if (
+    !email ||
+    email.length > CONTACT_LIMITS.email ||
+    !EMAIL_PATTERN.test(email)
+  ) {
+    return { ok: false, errors: { email: LOGIN_EMAIL_INVALID } };
+  }
+
+  return { ok: true, data: email };
+}
+
 export function parseNoteForm(formData: FormData): ParseResult<string, "body"> {
   const body = readText(formData, "body");
 

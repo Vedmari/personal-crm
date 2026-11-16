@@ -2,10 +2,16 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 
-import { BOOKMARK_STORAGE_KEY, readBookmark, type Bookmark } from "./notebook";
+import {
+  BOOKMARK_STORAGE_KEY,
+  readBookmark,
+  writeBookmark,
+  type Bookmark,
+} from "./notebook";
 
-// The bookmark lives in localStorage of this browser. Another tab reports a
-// change with the "storage" event, this tab with its own event.
+// The bookmark lives in localStorage of this browser, together with the user
+// who opened the card. Another tab reports a change with the "storage" event,
+// this tab with its own event.
 const CHANGE_EVENT = "notebook-bookmark-change";
 
 function readRaw(): string | null {
@@ -15,6 +21,10 @@ function readRaw(): string | null {
     // Storage can be switched off; then there is no bookmark.
     return null;
   }
+}
+
+function notify() {
+  window.dispatchEvent(new Event(CHANGE_EVENT));
 }
 
 function write(raw: string | null) {
@@ -28,7 +38,7 @@ function write(raw: string | null) {
     return;
   }
 
-  window.dispatchEvent(new Event(CHANGE_EVENT));
+  notify();
 }
 
 function subscribe(onChange: () => void) {
@@ -41,25 +51,53 @@ function subscribe(onChange: () => void) {
   };
 }
 
-// The bookmark of this browser. Null on the server and before hydration.
+// Who is signed in in this tab, as the line above the sheet tells
+// (BookmarkUser in AccountBar). Null on the sign-in pages and until it is known.
+let signedInUserId: string | null = null;
+
+function readUserId(): string | null {
+  return signedInUserId;
+}
+
+export function setBookmarkUser(userId: string | null) {
+  if (signedInUserId !== userId) {
+    signedInUserId = userId;
+    notify();
+  }
+}
+
+function useBookmarkUser(): string | null {
+  return useSyncExternalStore(subscribe, readUserId, () => null);
+}
+
+// The bookmark of the signed-in user in this browser. Null on the server,
+// before hydration, and for a bookmark of somebody else.
 export function useBookmark(): Bookmark | null {
   const raw = useSyncExternalStore(subscribe, readRaw, () => null);
 
-  return readBookmark(raw);
+  return readBookmark(raw, useBookmarkUser());
 }
 
 // The open card puts the bookmark on itself. A rename moves the name along.
 export function useBookmarkHere(bookmark: Bookmark) {
   const { id, name } = bookmark;
+  const userId = useBookmarkUser();
 
   useEffect(() => {
-    write(JSON.stringify({ id, name }));
-  }, [id, name]);
+    if (userId !== null) {
+      write(writeBookmark({ id, name }, userId));
+    }
+  }, [id, name, userId]);
 }
 
 // A deleted contact takes its bookmark along.
 export function forgetBookmark(contactId: number) {
-  if (readBookmark(readRaw())?.id === contactId) {
+  if (readBookmark(readRaw(), signedInUserId)?.id === contactId) {
     write(null);
   }
+}
+
+// «Выйти»: the next person in this browser gets no bookmark.
+export function forgetAllBookmarks() {
+  write(null);
 }

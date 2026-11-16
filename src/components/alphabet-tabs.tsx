@@ -1,5 +1,6 @@
 import { AlphabetTab, LetterFromAddress } from "@/components/alphabet-tab";
 import { listLetters } from "@/db/queries";
+import { requireUserId } from "@/lib/current-user";
 import {
   letterAnchor,
   listHref,
@@ -23,9 +24,10 @@ export async function AlphabetTabs({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const ownerId = await requireUserId();
   const { search, group } = await readListFilter(searchParams);
   const shown = parseShown(await searchParams);
-  const letters = await listLetters(search, group?.id ?? null);
+  const letters = await listLetters(ownerId, search, group?.id ?? null);
 
   if (letters.length === 0) {
     return null;

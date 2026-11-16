@@ -8,7 +8,9 @@ import "@fontsource/alegreya-sans/700.css";
 import "@fontsource-variable/caveat/wght.css";
 
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 
+import { AccountBar, AccountBarPlace } from "@/components/account-bar";
 import { NotebookCover } from "@/components/notebook-cover";
 import { Toaster } from "@/components/ui/sonner";
 import { coverScript } from "@/lib/notebook";
@@ -34,6 +36,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="flex min-h-full flex-col bg-book-cover font-sans text-ink-body lining-nums">
         <NotebookCover />
+        {/* Reads the sign-in of the request, so it waits in its own Suspense. */}
+        <Suspense fallback={<AccountBarPlace />}>
+          <AccountBar />
+        </Suspense>
         {children}
         <Toaster position="bottom-center" />
       </body>

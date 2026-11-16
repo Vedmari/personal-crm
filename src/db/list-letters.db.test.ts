@@ -4,7 +4,11 @@ import { db } from "@/db";
 import { listLetters } from "@/db/queries";
 import { contactGroups, groups } from "@/db/schema";
 
-import { createTestContacts, markContactDeleted } from "../../test/factories";
+import {
+  createTestContacts,
+  markContactDeleted,
+  USER_A,
+} from "../../test/factories";
 
 describe("listLetters", () => {
   it("gives each letter of the list with its first place [Вырубки — буквы книги]", async () => {
@@ -17,7 +21,7 @@ describe("listLetters", () => {
       { name: "Ярослав Юдин", about: "" },
     ]);
 
-    expect(await listLetters("", null)).toEqual([
+    expect(await listLetters(USER_A, "", null)).toEqual([
       { letter: "Б", position: 1 },
       { letter: "В", position: 2 },
       { letter: "Ч", position: 4 },
@@ -32,7 +36,7 @@ describe("listLetters", () => {
       { name: "3D-печать Миша", about: "" },
     ]);
 
-    const letters = await listLetters("", null);
+    const letters = await listLetters(USER_A, "", null);
 
     expect(letters.map((item) => item.letter)).toEqual(["#", "Е"]);
     expect(letters[1].position).toBe(2);
@@ -45,10 +49,10 @@ describe("listLetters", () => {
       { name: "Вера Соколова", about: "" },
     ]);
 
-    expect(await listLetters("яков белов", null)).toEqual([
+    expect(await listLetters(USER_A, "яков белов", null)).toEqual([
       { letter: "Я", position: 1 },
     ]);
-    expect(await listLetters("яков", null)).toEqual([
+    expect(await listLetters(USER_A, "яков", null)).toEqual([
       { letter: "Б", position: 1 },
       { letter: "Я", position: 2 },
     ]);
@@ -62,14 +66,14 @@ describe("listLetters", () => {
     ]);
     const [group] = await db
       .insert(groups)
-      .values({ name: "Друзья" })
+      .values({ ownerId: USER_A, name: "Друзья" })
       .returning({ id: groups.id });
     await db.insert(contactGroups).values([
       { contactId: boris, groupId: group.id },
       { contactId: yana, groupId: group.id },
     ]);
 
-    expect(await listLetters("", group.id)).toEqual([
+    expect(await listLetters(USER_A, "", group.id)).toEqual([
       { letter: "Б", position: 1 },
       { letter: "Я", position: 2 },
     ]);
@@ -83,7 +87,7 @@ describe("listLetters", () => {
     ]);
     await markContactDeleted(vera);
 
-    expect(await listLetters("", null)).toEqual([
+    expect(await listLetters(USER_A, "", null)).toEqual([
       { letter: "Б", position: 1 },
       { letter: "Я", position: 2 },
     ]);

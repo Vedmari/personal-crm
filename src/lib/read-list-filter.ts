@@ -3,13 +3,15 @@ import "server-only";
 import { cache } from "react";
 
 import { findGroup, type GroupRef } from "@/db/queries";
+import { requireUserId } from "@/lib/current-user";
 
 import { parseListParams } from "./list-filter";
 
 export type ListFilter = {
   search: string;
   // The group of the address. Null when the address has none, or has one that
-  // does not exist any more: the list then shows everybody.
+  // does not exist any more, or belongs to somebody else: the list then shows
+  // everybody.
   group: GroupRef | null;
 };
 
@@ -19,9 +21,10 @@ export const readListFilter = cache(
   async (
     searchParams: Promise<Record<string, string | string[] | undefined>>,
   ): Promise<ListFilter> => {
+    const ownerId = await requireUserId();
     const { search, groupId } = parseListParams(await searchParams);
     const group =
-      groupId === null ? null : ((await findGroup(groupId)) ?? null);
+      groupId === null ? null : ((await findGroup(ownerId, groupId)) ?? null);
 
     return { search, group };
   },
