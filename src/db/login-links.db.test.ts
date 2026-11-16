@@ -1,4 +1,4 @@
-// openspec/changes/login/specs/user-auth: the limit of sign-in emails and the
+// openspec/specs/user-auth: the limit of sign-in emails and the
 // new link that cancels the old ones. The request for a link checks them in
 // the before-hook of Better Auth (src/lib/auth.ts), for the form and for any
 // other request alike; here they run against the real test database.

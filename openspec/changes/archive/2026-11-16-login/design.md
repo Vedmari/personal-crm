@@ -95,7 +95,7 @@
 
 ### 8. Письма: Nodemailer, адрес из `SMTP_URL`
 
-- Один транспорт Nodemailer из строки подключения `SMTP_URL`: на этом компьютере и в CI `smtp://localhost:1025` (Mailpit), на сервере `smtps://resend:<API-ключ>@smtp.resend.com:465`. Код один, отличается только настройка. Транспорт создаётся при первой отправке, а не при импорте: сборке образа `SMTP_URL` не нужен.
+- Один транспорт Nodemailer из строки подключения `SMTP_URL`: на этом компьютере и в CI `smtp://localhost:1025` (Mailpit), на сервере `smtps://resend:<API-ключ>@smtp.resend.com:2465` (запасной порт Resend: провайдер сервера закрывает исходящие 465 и 587, выяснилось при выкатке 16 ноября 2026). Код один, отличается только настройка. Транспорт создаётся при первой отправке, а не при импорте: сборке образа `SMTP_URL` не нужен.
 - Отправитель — константа в коде `"Личная CRM" <noreply@mail.crm.lichnaya-crm.ru>` (так в спеке, одинаково везде).
 - Письмо собирает чистая функция `buildLoginEmail(url)` → `{ subject, html, text }`: HTML-кнопка «Войти» (ссылка, оформленная кнопкой; без картинок и внешних стилей) и текстовая версия со ссылкой. Её проверяет юнит-тест, а доставку — e2e через Mailpit.
 - В журнал при сбое отправки — только код ошибки Nodemailer, без адреса: как с запросами к базе (решение от 27 октября 2026).
@@ -125,7 +125,7 @@
 | --- | --- | --- | --- |
 | `BETTER_AUTH_SECRET` | случайная строка ≥ 32 символов | тестовое значение в workflow | случайная строка, `openssl rand -base64 32` |
 | `BETTER_AUTH_URL` | `http://localhost:3000` | `http://localhost:3200` (задаёт `playwright.config.ts`) | `https://app.lichnaya-crm.ru` |
-| `SMTP_URL` | `smtp://localhost:1025` | `smtp://localhost:1025` | `smtps://resend:<ключ>@smtp.resend.com:465` |
+| `SMTP_URL` | `smtp://localhost:1025` | `smtp://localhost:1025` | `smtps://resend:<ключ>@smtp.resend.com:2465` |
 | `OWNER_EMAIL` | моя почта | не нужна (пустые базы) | моя почта |
 | `AUTH_IP_RATE_LIMIT` | — | `off` в job `E2E` | — |
 

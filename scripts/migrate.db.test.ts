@@ -1,4 +1,4 @@
-// openspec/changes/login/specs/data-ownership: the contacts, notes and groups
+// openspec/specs/data-ownership: the contacts, notes and groups
 // that are already in the database go to the owner from OWNER_EMAIL.
 //
 // The test has a database of its own, `<working>_migration_test`: it is

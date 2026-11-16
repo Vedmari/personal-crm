@@ -1,4 +1,4 @@
-// openspec/changes/login/specs/data-ownership: the test data of `pnpm db:seed`
+// openspec/specs/data-ownership: the test data of `pnpm db:seed`
 // belongs to the owner from OWNER_EMAIL. The script runs as a separate
 // process against the test database, the way `pnpm db:seed` runs it.
 

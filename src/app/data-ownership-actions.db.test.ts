@@ -1,4 +1,4 @@
-// openspec/changes/login/specs/data-ownership, «Чужое не меняется прямым
+// openspec/specs/data-ownership, «Чужое не меняется прямым
 // запросом»: B sends every server action with the numbers of A's rows. The
 // answer is the one for a row that does not exist, and A's data stay as they
 // were.
