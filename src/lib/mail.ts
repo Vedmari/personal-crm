@@ -4,7 +4,8 @@ import nodemailer, { type Transporter } from "nodemailer";
 
 // Where the letters go is decided by SMTP_URL, not by the code: Mailpit on
 // this computer and in CI (smtp://localhost:1025), Resend on the server
-// (smtps://resend:<key>@smtp.resend.com:465). The same build works everywhere.
+// (smtps://resend:<key>@smtp.resend.com:2465 — the hosting provider blocks
+// outgoing 465 and 587). The same build works everywhere.
 
 export const MAIL_FROM = '"Личная CRM" <noreply@mail.crm.lichnaya-crm.ru>';
 

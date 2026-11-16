@@ -1,4 +1,4 @@
-// openspec/changes/login/specs/user-auth, «Письмо не ушло»: the mail service
+// openspec/specs/user-auth, «Письмо не ушло»: the mail service
 // does not take the letter. SMTP_URL points at a port nobody listens on, so
 // the failure is a real one, not a stand-in.
 

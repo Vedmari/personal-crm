@@ -1,4 +1,4 @@
-// openspec/changes/login/specs/data-ownership: a user reads only their own
+// openspec/specs/data-ownership: a user reads only their own
 // contacts, notes and groups. A's rows are made as A; then B asks.
 
 import { eq } from "drizzle-orm";

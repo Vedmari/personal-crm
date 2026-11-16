@@ -1,5 +1,5 @@
 // The success criterion of specs/02-пользователи-вход.md and the scenario
-// «A и B не видят данных друг друга» of openspec/changes/login/specs/
+// «A и B не видят данных друг друга» of openspec/specs/
 // data-ownership: two people in two browsers, each signed in by the link of
 // their own letter, see only their own contacts, notes and groups — both ways.
 // Apart from the main scenario, in the "login" project: no kept sign-in.

@@ -125,7 +125,7 @@ Docker Desktop не используем: на рабочем ноутбуке �
 | `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB` | база данных |
 | `BETTER_AUTH_SECRET` | секрет, которым подписан вход. Случайная строка: результат команды `openssl rand -base64 32`. Если его поменять, все выйдут и войдут заново |
 | `BETTER_AUTH_URL` | `https://app.lichnaya-crm.ru`: сюда ведут ссылки в письмах |
-| `SMTP_URL` | куда отправлять письма: `smtps://resend:<API-ключ>@smtp.resend.com:465`. Ключ — в [Resend](https://resend.com), раздел API Keys, с правом только на отправку с домена `mail.crm.lichnaya-crm.ru`. Домен подтверждается в Resend записями DNS |
+| `SMTP_URL` | куда отправлять письма: `smtps://resend:<API-ключ>@smtp.resend.com:2465`. Порт 2465, а не обычный 465: провайдер сервера закрывает исходящие 465 и 587, а у Resend это запасной порт с тем же шифрованием. Ключ — в [Resend](https://resend.com), раздел API Keys, с правом только на отправку с домена `mail.crm.lichnaya-crm.ru`. Домен подтверждается в Resend записями DNS |
 | `OWNER_EMAIL` | ваша почта: ей достаются контакты, которые были на сервере до появления входа, и тестовые данные `seed.sh` |
 
 Отправитель писем — «Личная CRM» `noreply@mail.crm.lichnaya-crm.ru`, он одинаков везде.

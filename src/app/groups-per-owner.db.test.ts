@@ -1,4 +1,4 @@
-// openspec/changes/login/specs/contact-groups, «Название группы проверяется»:
+// openspec/specs/contact-groups, «Название группы проверяется»:
 // two groups with one name cannot be in one user's book, but two users may
 // each have their own. A's groups are made first, so a lookup that forgets
 // the owner finds A's group before B's.

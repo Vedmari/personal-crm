@@ -1,4 +1,4 @@
-// openspec/changes/login/specs/user-auth: the sign-in by a link from a letter,
+// openspec/specs/user-auth: the sign-in by a link from a letter,
 // in the "login" project — no kept sign-in, every test has emails of its own.
 // «Письмо не ушло» is checked by src/app/auth-actions.db.test.ts, «На сервере»
 // by a real deploy. Time that cannot be waited for (16 minutes, 30 days) is
@@ -641,7 +641,7 @@ test.describe("the email and «Выйти» above the sheet", () => {
   });
 });
 
-// openspec/changes/login/specs/data-ownership: what a card address and an
+// openspec/specs/data-ownership: what a card address and an
 // empty book look like.
 test.describe("a card that is not yours", () => {
   test("a direct link to A's contact shows «Контакт не найден» to B [Прямая ссылка на чужой контакт]", async ({
