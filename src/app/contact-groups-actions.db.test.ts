@@ -9,6 +9,7 @@ import {
   createTestContact,
   formOf,
   markContactDeleted,
+  USER_A,
 } from "../../test/factories";
 import {
   createGroupAction,
@@ -31,7 +32,7 @@ async function makeGroup(name: string): Promise<number> {
 }
 
 const namesOf = async (contactId: number) =>
-  (await listContactGroups(contactId)).map((group) => group.name);
+  (await listContactGroups(USER_A, contactId)).map((group) => group.name);
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -58,9 +59,9 @@ describe("setContactGroupAction", () => {
     await setContactGroupAction(anna, friends, true);
 
     expect(await namesOf(anna)).toEqual(["Друзья", "Теннис"]);
-    expect((await listGroups()).map((group) => group.contactCount)).toEqual([
-      1, 1,
-    ]);
+    expect(
+      (await listGroups(USER_A)).map((group) => group.contactCount),
+    ).toEqual([1, 1]);
   });
 
   it("has no groups for a new contact [Контакт без групп]", async () => {
@@ -78,7 +79,7 @@ describe("setContactGroupAction", () => {
 
     expect(result.ok).toBe(true);
     expect(await namesOf(anna)).toEqual([]);
-    expect(await listGroups()).toEqual([
+    expect(await listGroups(USER_A)).toEqual([
       expect.objectContaining({ name: "Теннис", contactCount: 0 }),
     ]);
   });
@@ -111,11 +112,13 @@ describe("setContactGroupAction", () => {
   it("does not stop the «Изменить» form that was open in another tab [Форма «Изменить» в другой вкладке]", async () => {
     const anna = await createTestContact("Анна");
     const tennis = await makeGroup("Теннис");
-    const before = await getContact(anna);
+    const before = await getContact(USER_A, anna);
 
     await setContactGroupAction(anna, tennis, true);
 
-    expect((await getContact(anna))?.updatedAt).toEqual(before?.updatedAt);
+    expect((await getContact(USER_A, anna))?.updatedAt).toEqual(
+      before?.updatedAt,
+    );
 
     const saved = await updateContactAction(
       anna,
@@ -124,7 +127,7 @@ describe("setContactGroupAction", () => {
     );
 
     expect(saved).toEqual({ ok: true, data: undefined });
-    expect((await getContact(anna))?.name).toBe("Анна Смирнова");
+    expect((await getContact(USER_A, anna))?.name).toBe("Анна Смирнова");
     expect(await namesOf(anna)).toEqual(["Теннис"]);
   });
 
@@ -142,7 +145,7 @@ describe("setContactGroupAction", () => {
       });
     }
 
-    expect((await listGroups())[0].contactCount).toBe(0);
+    expect((await listGroups(USER_A))[0].contactCount).toBe(0);
   });
 
   it("says the contact is gone for an id that is not one", async () => {
@@ -218,7 +221,7 @@ describe("createGroupForContactAction", () => {
 
     expect(result).toMatchObject({ ok: true, data: { name: "Аналитики" } });
     expect(await namesOf(anna)).toEqual(["Аналитики"]);
-    expect(await listGroups()).toEqual([
+    expect(await listGroups(USER_A)).toEqual([
       expect.objectContaining({ name: "Аналитики", contactCount: 1 }),
     ]);
   });
@@ -234,7 +237,7 @@ describe("createGroupForContactAction", () => {
 
     expect(result).toMatchObject({ ok: true, data: { name: "Друзья" } });
     expect(await namesOf(anna)).toEqual(["Друзья"]);
-    expect(await listGroups()).toHaveLength(1);
+    expect(await listGroups(USER_A)).toHaveLength(1);
   });
 
   it("keeps the other groups of the contact", async () => {
@@ -262,7 +265,7 @@ describe("createGroupForContactAction", () => {
       errors: { name: "Слишком длинно: не больше 50 символов" },
     });
     expect(await namesOf(anna)).toEqual(["Теннис"]);
-    expect(await listGroups()).toHaveLength(1);
+    expect(await listGroups(USER_A)).toHaveLength(1);
   });
 
   it("refuses an empty name and changes nothing [Неподходящее название в карточке]", async () => {
@@ -271,7 +274,7 @@ describe("createGroupForContactAction", () => {
     expect(
       await createGroupForContactAction(anna, formOf({ name: "  " })),
     ).toEqual({ ok: false, errors: { name: "Напишите название группы" } });
-    expect(await listGroups()).toEqual([]);
+    expect(await listGroups(USER_A)).toEqual([]);
   });
 
   it("makes no group when the contact was deleted in another tab [Контакт удалили в другой вкладке]", async () => {
@@ -282,7 +285,7 @@ describe("createGroupForContactAction", () => {
     expect(
       await createGroupForContactAction(anna, formOf({ name: "Теннис" })),
     ).toEqual({ ok: false, errors: {}, message: CONTACT_NOT_FOUND });
-    expect(await listGroups()).toEqual([]);
+    expect(await listGroups(USER_A)).toEqual([]);
   });
 
   it("says the contact is gone for an id that is not one", async () => {
@@ -295,6 +298,6 @@ describe("createGroupForContactAction", () => {
       ).toEqual({ ok: false, errors: {}, message: CONTACT_NOT_FOUND });
     }
 
-    expect(await listGroups()).toEqual([]);
+    expect(await listGroups(USER_A)).toEqual([]);
   });
 });

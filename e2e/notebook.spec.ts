@@ -5,11 +5,9 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { Sql } from "postgres";
 
+import { newBrowser, signIn, uniqueEmail } from "./auth";
 import { resetDatabase } from "./database";
 import { currentPage, notesSection, toast } from "./locators";
-
-// A clean browser: no session cookie, so the cover is closed on the first page.
-const FRESH_BROWSER = { cookies: [], origins: [] };
 
 function cover(page: Page) {
   return page.locator("[data-notebook-cover]");
@@ -35,10 +33,10 @@ function backToList(page: Page) {
 
 // Somebody it is time to contact: once a month, chosen long ago, no notes.
 function addOverdue(name: string) {
-  return async (sql: Sql) => {
+  return async (sql: Sql, ownerId: string) => {
     await sql`
-      insert into contacts (name, keep_in_touch_every, keep_in_touch_since)
-      values (${name}, 'month', '2025-01-01T12:00:00+03:00')
+      insert into contacts (owner_id, name, keep_in_touch_every, keep_in_touch_since)
+      values (${ownerId}, ${name}, 'month', '2025-01-01T12:00:00+03:00')
     `;
   };
 }
@@ -125,7 +123,11 @@ async function countInk(page: Page) {
 }
 
 test.describe("cover", () => {
-  test.use({ storageState: FRESH_BROWSER });
+  // A new browser session of the signed-in e2e user: without the session
+  // cookie of the cover, so the cover is closed on the first page.
+  test.beforeEach(async ({ context }) => {
+    await context.clearCookies({ name: "notebook-opened" });
+  });
 
   test("the cover opens by itself the first time [Первое открытие за сеанс]", async ({
     page,
@@ -250,6 +252,73 @@ test.describe("bookmark", () => {
     await expect(listLink(page, "Вера Соколова")).toBeVisible();
     await expect(page.locator("[data-bookmark-ribbon]:visible")).toBeVisible();
     await expect(bookmarkLink(page)).toHaveCount(0);
+  });
+
+  // A and B in one browser of their own: the e2e user's kept sign-in is not
+  // signed out.
+  async function bookmarkAnnaAs(page: Page, email: string) {
+    await signIn(page, email);
+    await page.getByRole("button", { name: "Добавить контакт" }).click();
+
+    const dialog = page.getByRole("dialog", { name: "Новый контакт" });
+
+    await dialog.getByLabel("Имя").fill("Анна Смирнова");
+    await dialog.getByRole("button", { name: "Добавить", exact: true }).click();
+    await expect(dialog).toBeHidden();
+
+    await listLink(page, "Анна Смирнова").click();
+    await expect(cardHeading(page, "Анна Смирнова")).toBeVisible();
+    await backToList(page).click();
+    await expect(bookmarkLink(page)).toHaveAccessibleName(
+      "Закладка: Анна Смирнова",
+    );
+  }
+
+  async function expectNoBookmarkOfAnna(page: Page) {
+    await expect(listLink(page, "Анна Смирнова")).toHaveCount(0);
+    await expect(page.locator("[data-bookmark-ribbon]:visible")).toBeVisible();
+    await expect(bookmarkLink(page)).toHaveCount(0);
+    await expect(page.locator('[aria-label*="Анна"]')).toHaveCount(0);
+  }
+
+  test("another user in this browser gets no bookmark [В браузере вошёл другой пользователь]", async ({
+    browser,
+  }) => {
+    await resetDatabase();
+
+    const { context, page } = await newBrowser(browser);
+
+    try {
+      await bookmarkAnnaAs(page, uniqueEmail("a"));
+
+      await page.getByRole("button", { name: "Выйти" }).click();
+      await expect(page).toHaveURL(/\/login$/);
+      await signIn(page, uniqueEmail("b"));
+
+      await expectNoBookmarkOfAnna(page);
+    } finally {
+      await context.close();
+    }
+  });
+
+  test("another user gets no bookmark even if A did not sign out [В браузере вошёл другой пользователь]", async ({
+    browser,
+  }) => {
+    await resetDatabase();
+
+    const { context, page } = await newBrowser(browser);
+
+    try {
+      await bookmarkAnnaAs(page, uniqueEmail("a"));
+
+      // A's sign-in ran out; the bookmark stays in the browser.
+      await context.clearCookies({ name: /session_token/ });
+      await signIn(page, uniqueEmail("b"));
+
+      await expectNoBookmarkOfAnna(page);
+    } finally {
+      await context.close();
+    }
   });
 });
 

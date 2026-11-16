@@ -29,3 +29,6 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /blob-report/
+
+# signed-in browser state of the e2e user (e2e/auth.setup.ts)
+/e2e/.auth/

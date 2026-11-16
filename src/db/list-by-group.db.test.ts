@@ -17,6 +17,7 @@ import {
   createTestContact,
   formOf,
   markContactDeleted,
+  USER_A,
 } from "../../test/factories";
 
 async function makeGroup(name: string): Promise<number> {
@@ -34,19 +35,19 @@ async function put(contactId: number, groupId: number): Promise<void> {
 }
 
 const namesIn = async (search: string, groupId: number | null) =>
-  (await listContacts(search, groupId)).items.map((item) => item.name);
+  (await listContacts(USER_A, search, groupId)).items.map((item) => item.name);
 
 describe("listContacts with a group", () => {
   it("shows only the members, and counts only them [Выбрать группу]", async () => {
     const tennis = await makeGroup("Теннис");
     const [anna, boris, vera] = await Promise.all(
-      ["Анна", "Борис", "Вера"].map(createTestContact),
+      ["Анна", "Борис", "Вера"].map((name) => createTestContact(name)),
     );
     await createTestContact("Глеб");
     await createTestContact("Дарья");
     await Promise.all([anna, boris, vera].map((id) => put(id, tennis)));
 
-    const { items, total } = await listContacts("", tennis);
+    const { items, total } = await listContacts(USER_A, "", tennis);
 
     expect(items.map((item) => item.name)).toEqual(["Анна", "Борис", "Вера"]);
     expect(total).toBe(3);
@@ -59,7 +60,7 @@ describe("listContacts with a group", () => {
     await put(anna, tennis);
 
     for (const none of [null, undefined]) {
-      const { items, total } = await listContacts("", none);
+      const { items, total } = await listContacts(USER_A, "", none);
 
       expect(items.map((item) => item.name)).toEqual(["Анна", "Борис"]);
       expect(total).toBe(2);
@@ -70,7 +71,7 @@ describe("listContacts with a group", () => {
     const analysts = await makeGroup("Аналитики");
     await createTestContact("Анна");
 
-    expect(await listContacts("", analysts)).toEqual({
+    expect(await listContacts(USER_A, "", analysts)).toEqual({
       items: [],
       matched: 0,
       total: 0,
@@ -85,7 +86,7 @@ describe("listContacts with a group", () => {
     await createTestContact("Анна Кузнецова");
     await Promise.all([smirnova, petrova, boris].map((id) => put(id, friends)));
 
-    const { items, total } = await listContacts("анна", friends);
+    const { items, total } = await listContacts(USER_A, "анна", friends);
 
     expect(items.map((item) => item.name)).toEqual([
       "Анна Петрова",
@@ -108,7 +109,7 @@ describe("listContacts with a group", () => {
     await createTestContact("Пётр Петров");
     await put(boris, friends);
 
-    expect(await listContacts("петров", friends)).toEqual({
+    expect(await listContacts(USER_A, "петров", friends)).toEqual({
       items: [],
       matched: 0,
       total: 1,
@@ -124,30 +125,29 @@ describe("listContacts with a group", () => {
 
     expect(await namesIn("", tennis)).toEqual(["Анна"]);
     expect(await namesIn("", friends)).toEqual(["Анна"]);
-    expect((await listContactGroups(anna)).map((group) => group.name)).toEqual([
-      "Друзья",
-      "Теннис",
-    ]);
+    expect(
+      (await listContactGroups(USER_A, anna)).map((group) => group.name),
+    ).toEqual(["Друзья", "Теннис"]);
   });
 
   it("does not list a contact that waits for «Вернуть» and puts it back after it [Удалила контакт из группы] [Вернула контакт]", async () => {
     const tennis = await makeGroup("Теннис");
     const [anna, boris, vera] = await Promise.all(
-      ["Анна", "Борис", "Вера"].map(createTestContact),
+      ["Анна", "Борис", "Вера"].map((name) => createTestContact(name)),
     );
     await Promise.all([anna, boris, vera].map((id) => put(id, tennis)));
 
     await markContactDeleted(boris);
 
-    expect(await listContacts("", tennis)).toMatchObject({ total: 2 });
+    expect(await listContacts(USER_A, "", tennis)).toMatchObject({ total: 2 });
     expect(await namesIn("", tennis)).toEqual(["Анна", "Вера"]);
-    expect((await listGroups())[0].contactCount).toBe(2);
+    expect((await listGroups(USER_A))[0].contactCount).toBe(2);
 
-    await restoreContact(boris);
+    await restoreContact(USER_A, boris);
 
-    expect(await listContacts("", tennis)).toMatchObject({ total: 3 });
+    expect(await listContacts(USER_A, "", tennis)).toMatchObject({ total: 3 });
     expect(await namesIn("", tennis)).toEqual(["Анна", "Борис", "Вера"]);
-    expect((await listGroups())[0].contactCount).toBe(3);
+    expect((await listGroups(USER_A))[0].contactCount).toBe(3);
   });
 });
 

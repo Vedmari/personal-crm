@@ -4,6 +4,9 @@ import postgres from "postgres";
 import { afterAll, beforeEach, inject, vi } from "vitest";
 
 import { databaseNameOf } from "./database";
+// Not test/factories.ts: it imports src/db, which must not be loaded before
+// DATABASE_URL points at the test database below.
+import { signInAs, USER_A, USER_B } from "./signed-in";
 
 const testUrl = inject("testDatabaseUrl");
 
@@ -13,6 +16,29 @@ process.env.DATABASE_URL = testUrl;
 
 // refresh() redraws the page of a request. There is no request in a test.
 vi.mock("next/cache", () => ({ refresh: vi.fn() }));
+
+// There is no sign-in cookie in a test either: the server actions work for
+// the user of signInAs (test/signed-in.ts). Without a user, requireUserId
+// stops the action the way redirect("/login") does: with an error.
+vi.mock("@/lib/current-user", async () => {
+  const { signedInAs } = await import("./signed-in");
+
+  return {
+    getCurrentUser: async () => {
+      const id = signedInAs();
+      return id === null ? null : { id, email: `${id}@example.com` };
+    },
+    requireUserId: async () => {
+      const id = signedInAs();
+
+      if (id === null) {
+        throw new Error("NEXT_REDIRECT: not signed in");
+      }
+
+      return id;
+    },
+  };
+});
 
 const sql = postgres(testUrl, { max: 1, onnotice: () => {} });
 
@@ -37,6 +63,14 @@ beforeEach(async () => {
       `truncate table ${tables.map((table) => table.name).join(", ")} restart identity cascade`,
     );
   }
+
+  // Users A and B; the test works as A until it signs in as somebody else.
+  await sql`
+    insert into "user" (id, name, email, email_verified) values
+      (${USER_A}, '', 'a@example.com', true),
+      (${USER_B}, '', 'b@example.com', true)
+  `;
+  signInAs(USER_A);
 });
 
 afterAll(async () => {

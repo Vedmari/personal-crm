@@ -29,6 +29,9 @@ jobs:
     name: Checks
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      # A test value, not a secret: it signs only the sign-ins of the tests.
+      BETTER_AUTH_SECRET: ci-only-secret-of-the-tests-0123456789abcdef
     services:
       postgres:
         image: postgres:17
@@ -72,6 +75,12 @@ jobs:
     name: E2E
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      # Test values, not secrets. The app under test sends its letters to the
+      # Mailpit service below, and the tests read them from its API.
+      BETTER_AUTH_SECRET: ci-only-secret-of-the-tests-0123456789abcdef
+      SMTP_URL: smtp://localhost:1025
+      MAILPIT_URL: http://localhost:8025
     services:
       postgres:
         image: postgres:17
@@ -86,6 +95,12 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      # The mail catcher: no letter of the tests leaves the runner.
+      mailpit:
+        image: axllent/mailpit:v1.33.0
+        ports:
+          - 1025:1025
+          - 8025:8025
     steps:
       - uses: actions/checkout@v7
 

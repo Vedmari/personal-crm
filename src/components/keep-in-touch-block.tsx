@@ -1,5 +1,6 @@
 import { KeepInTouchList } from "@/components/keep-in-touch-list";
 import { listOverdueContacts } from "@/db/queries";
+import { requireUserId } from "@/lib/current-user";
 import { formatDay, KEEP_IN_TOUCH_LABELS } from "@/lib/format";
 import { showsKeepInTouch } from "@/lib/list-filter";
 import { readListFilter } from "@/lib/read-list-filter";
@@ -16,7 +17,7 @@ export async function KeepInTouchBlock({
     return null;
   }
 
-  const overdue = await listOverdueContacts();
+  const overdue = await listOverdueContacts(await requireUserId());
 
   if (overdue.length === 0) {
     return null;

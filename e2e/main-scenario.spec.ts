@@ -3,6 +3,7 @@
 
 import { expect, test, type Page } from "@playwright/test";
 
+import { E2E_USER_EMAIL, newBrowser, signIn } from "./auth";
 import { resetDatabase, SEEDED_CONTACTS } from "./database";
 import { currentPage, notesSection, toast } from "./locators";
 
@@ -22,7 +23,6 @@ test.beforeEach(() => resetDatabase());
 test("a contact added, found and noted keeps the note for every browser [Главный сценарий]", async ({
   page,
   browser,
-  baseURL,
 }) => {
   await test.step("open: the list shows all contacts", async () => {
     await page.goto("/");
@@ -83,11 +83,11 @@ test("a contact added, found and noted keeps the note for every browser [Гла�
 
   await test.step("another browser: the same contacts and the same note", async () => {
     // A context of its own: no cookies, storage or cache from the first one.
-    const otherBrowser = await browser.newContext({ baseURL });
-    const other = await otherBrowser.newPage();
+    // The same user signs in there by a link from a letter.
+    const { context: otherBrowser, page: other } = await newBrowser(browser);
 
     try {
-      await other.goto("/");
+      await signIn(other, E2E_USER_EMAIL);
 
       await expect(currentPage(other).getByText("3 контакта")).toBeVisible();
 

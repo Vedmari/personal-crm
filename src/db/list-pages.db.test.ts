@@ -8,6 +8,7 @@ import {
   createTestContact,
   createTestContacts,
   markContactDeleted,
+  USER_A,
 } from "../../test/factories";
 
 // "Человек 001" … "Человек 250": the number is the place in the alphabet.
@@ -42,7 +43,7 @@ describe("listContacts in portions", () => {
   it("gives the first hundred in alphabetical order and counts everybody [Контактов больше ста]", async () => {
     await addPeople(250);
 
-    const { items, matched, total } = await listContacts("", null, 100);
+    const { items, matched, total } = await listContacts(USER_A, "", null, 100);
 
     expect(namesOf(items)).toEqual(firstPlaces(100));
     expect(matched).toBe(250);
@@ -52,7 +53,7 @@ describe("listContacts in portions", () => {
   it("gives everybody when there are not more than a hundred [Контактов не больше ста]", async () => {
     await addPeople(100);
 
-    const { items, matched } = await listContacts("", null, 100);
+    const { items, matched } = await listContacts(USER_A, "", null, 100);
 
     expect(items).toHaveLength(100);
     expect(matched).toBe(100);
@@ -61,8 +62,8 @@ describe("listContacts in portions", () => {
   it("gives the next hundred after the same first hundred [Следующая сотня]", async () => {
     await addPeople(250);
 
-    const first = await listContacts("", null, 100);
-    const longer = await listContacts("", null, 200);
+    const first = await listContacts(USER_A, "", null, 100);
+    const longer = await listContacts(USER_A, "", null, 200);
 
     expect(namesOf(longer.items)).toEqual(firstPlaces(200));
     expect(namesOf(longer.items.slice(0, 100))).toEqual(namesOf(first.items));
@@ -71,7 +72,7 @@ describe("listContacts in portions", () => {
   it("finds a contact beyond the shown part [Найти контакт за пределами показанных]", async () => {
     await addPeople(250);
 
-    const { items } = await listContacts(personName(240), null, 100);
+    const { items } = await listContacts(USER_A, personName(240), null, 100);
 
     expect(namesOf(items)).toEqual([personName(240)]);
   });
@@ -79,7 +80,12 @@ describe("listContacts in portions", () => {
   it("gives the first hundred found and counts all found [Найдено больше ста]", async () => {
     await addPeople(250, (place) => (place <= 150 ? "Соседка" : "Коллега"));
 
-    const { items, matched, total } = await listContacts("соседка", null, 100);
+    const { items, matched, total } = await listContacts(
+      USER_A,
+      "соседка",
+      null,
+      100,
+    );
 
     expect(namesOf(items)).toEqual(firstPlaces(100));
     expect(matched).toBe(150);
@@ -90,7 +96,7 @@ describe("listContacts in portions", () => {
     const ids = await addPeople(250);
     const [friends] = await db
       .insert(groups)
-      .values({ name: "Друзья" })
+      .values({ ownerId: USER_A, name: "Друзья" })
       .returning({ id: groups.id });
     // Every second person, 1, 3, 5 … 239: 120 members.
     const members = Array.from({ length: 120 }, (_, index) => 2 * index + 1);
@@ -101,7 +107,12 @@ describe("listContacts in portions", () => {
       })),
     );
 
-    const { items, matched, total } = await listContacts("", friends.id, 100);
+    const { items, matched, total } = await listContacts(
+      USER_A,
+      "",
+      friends.id,
+      100,
+    );
 
     expect(namesOf(items)).toEqual(members.slice(0, 100).map(personName));
     expect(matched).toBe(120);
@@ -112,7 +123,7 @@ describe("listContacts in portions", () => {
     const ids = await addPeople(150);
     await markContactDeleted(ids[50]);
 
-    const { items, matched } = await listContacts("", null, 100);
+    const { items, matched } = await listContacts(USER_A, "", null, 100);
 
     expect(namesOf(items)).not.toContain(personName(50));
     expect(namesOf(items).at(-1)).toBe(personName(101));
@@ -124,51 +135,51 @@ describe("contactPosition", () => {
   it("is 1 for the first contact in the alphabet", async () => {
     const ids = await addPeople(3);
 
-    expect(await contactPosition(ids[1])).toBe(1);
-    expect(await contactPosition(ids[3])).toBe(3);
+    expect(await contactPosition(USER_A, ids[1])).toBe(1);
+    expect(await contactPosition(USER_A, ids[3])).toBe(3);
   });
 
   it("counts the way the list sorts: word by word", async () => {
     const yakovlev = await createTestContact("Александр Яковлев");
     const belova = await createTestContact("Александра Белова");
 
-    expect(await contactPosition(yakovlev)).toBe(1);
-    expect(await contactPosition(belova)).toBe(2);
+    expect(await contactPosition(USER_A, yakovlev)).toBe(1);
+    expect(await contactPosition(USER_A, belova)).toBe(2);
   });
 
   it("puts equal names in the order they were added", async () => {
     const first = await createTestContact("Анна Смирнова");
     const second = await createTestContact("Анна Смирнова");
 
-    expect(await contactPosition(first)).toBe(1);
-    expect(await contactPosition(second)).toBe(2);
+    expect(await contactPosition(USER_A, first)).toBe(1);
+    expect(await contactPosition(USER_A, second)).toBe(2);
   });
 
   it("does not count deleted contacts that stand before", async () => {
     const ids = await addPeople(250);
     await markContactDeleted(ids[10]);
 
-    expect(await contactPosition(ids[240])).toBe(239);
+    expect(await contactPosition(USER_A, ids[240])).toBe(239);
   });
 
   it("is the place in the whole book, whatever group the contact is in", async () => {
     const ids = await addPeople(250);
     const [friends] = await db
       .insert(groups)
-      .values({ name: "Друзья" })
+      .values({ ownerId: USER_A, name: "Друзья" })
       .returning({ id: groups.id });
     await db
       .insert(contactGroups)
       .values({ contactId: ids[240], groupId: friends.id });
 
-    expect(await contactPosition(ids[240])).toBe(240);
+    expect(await contactPosition(USER_A, ids[240])).toBe(240);
   });
 
   it("is null for a contact that is not in the book", async () => {
     const ids = await addPeople(2);
     await markContactDeleted(ids[2]);
 
-    expect(await contactPosition(ids[2])).toBeNull();
-    expect(await contactPosition(999_999)).toBeNull();
+    expect(await contactPosition(USER_A, ids[2])).toBeNull();
+    expect(await contactPosition(USER_A, 999_999)).toBeNull();
   });
 });

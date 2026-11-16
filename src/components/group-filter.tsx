@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { listGroups } from "@/db/queries";
+import { requireUserId } from "@/lib/current-user";
 import { formatCount } from "@/lib/format";
 import { listHref } from "@/lib/list-filter";
 import { readListFilter } from "@/lib/read-list-filter";
@@ -24,9 +25,10 @@ export async function GroupFilter({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const ownerId = await requireUserId();
   const [{ search, group: chosen }, groups] = await Promise.all([
     readListFilter(searchParams),
-    listGroups(),
+    listGroups(ownerId),
   ]);
 
   const manageLink = (

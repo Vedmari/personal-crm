@@ -23,11 +23,12 @@ const CHOSEN_LONG_AGO = "2025-01-01T12:00:00+03:00";
 const OLD_NOTE = "Обсудили турнир";
 
 function addPeople(people: Person[]) {
-  return async (sql: Sql) => {
+  return async (sql: Sql, ownerId: string) => {
     for (const person of people) {
       const [{ id }] = await sql<{ id: number }[]>`
-        insert into contacts (name, keep_in_touch_every, keep_in_touch_since)
+        insert into contacts (owner_id, name, keep_in_touch_every, keep_in_touch_since)
         values (
+          ${ownerId},
           ${person.name},
           ${person.every ?? null},
           ${person.every ? CHOSEN_LONG_AGO : null}

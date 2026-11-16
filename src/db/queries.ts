@@ -73,6 +73,24 @@ function contactMatches(search: string): SQL | undefined {
 // the way a phone book does, and treats "ё" as "е".
 const nameInAlphabeticalOrder = sql`${contacts.name} collate "ru-x-icu"`;
 
+// The rows of one user. A note has no owner of its own: it belongs to the
+// owner of its contact. Every query takes the owner as its first argument and
+// keeps to it, so somebody else's row is the same as a row that is not there.
+function ownContact(ownerId: string): SQL {
+  return eq(contacts.ownerId, ownerId);
+}
+
+function ownNote(ownerId: string): SQL {
+  return sql`exists (
+    select 1 from ${contacts}
+    where ${contacts.id} = ${notes.contactId} and ${contacts.ownerId} = ${ownerId}
+  )`;
+}
+
+function ownGroup(ownerId: string): SQL {
+  return eq(groups.ownerId, ownerId);
+}
+
 // Only contacts that are in the group.
 function inGroup(groupId: number): SQL {
   return sql`exists (
@@ -87,6 +105,7 @@ function inGroup(groupId: number): SQL {
 export const listContacts = safeQuery(
   "listContacts",
   async (
+    ownerId: string,
     search: string,
     groupId: number | null = null,
     limit: number = LIST_PAGE_SIZE,
@@ -96,6 +115,7 @@ export const listContacts = safeQuery(
     total: number;
   }> => {
     const inScope = and(
+      ownContact(ownerId),
       isNull(contacts.deletedAt),
       groupId === null ? undefined : inGroup(groupId),
     );
@@ -140,6 +160,7 @@ export const listContacts = safeQuery(
 export const listLetters = safeQuery(
   "listLetters",
   async (
+    ownerId: string,
     search: string,
     groupId: number | null = null,
   ): Promise<{ letter: string; position: number }[]> => {
@@ -148,6 +169,7 @@ export const listLetters = safeQuery(
       .from(contacts)
       .where(
         and(
+          ownContact(ownerId),
           isNull(contacts.deletedAt),
           groupId === null ? undefined : inGroup(groupId),
           contactMatches(search),
@@ -174,11 +196,17 @@ export const listLetters = safeQuery(
 // contact, or it is deleted.
 export const contactPosition = safeQuery(
   "contactPosition",
-  async (id: number): Promise<number | null> => {
+  async (ownerId: string, id: number): Promise<number | null> => {
     const [target] = await db
       .select({ name: contacts.name })
       .from(contacts)
-      .where(and(eq(contacts.id, id), isNull(contacts.deletedAt)))
+      .where(
+        and(
+          ownContact(ownerId),
+          eq(contacts.id, id),
+          isNull(contacts.deletedAt),
+        ),
+      )
       .limit(1);
 
     if (!target) {
@@ -191,6 +219,7 @@ export const contactPosition = safeQuery(
       .from(contacts)
       .where(
         and(
+          ownContact(ownerId),
           isNull(contacts.deletedAt),
           sql`(${nameInAlphabeticalOrder}, ${contacts.id}) < (${target.name} collate "ru-x-icu", ${id})`,
         ),
@@ -200,30 +229,48 @@ export const contactPosition = safeQuery(
   },
 );
 
-export const getContact = safeQuery("getContact", async (id: number) => {
-  const rows = await db
-    .select()
-    .from(contacts)
-    .where(and(eq(contacts.id, id), isNull(contacts.deletedAt)))
-    .limit(1);
+export const getContact = safeQuery(
+  "getContact",
+  async (ownerId: string, id: number) => {
+    const rows = await db
+      .select()
+      .from(contacts)
+      .where(
+        and(
+          ownContact(ownerId),
+          eq(contacts.id, id),
+          isNull(contacts.deletedAt),
+        ),
+      )
+      .limit(1);
 
-  return rows[0];
-});
+    return rows[0];
+  },
+);
 
-export const listNotes = safeQuery("listNotes", async (contactId: number) => {
-  return db
-    .select()
-    .from(notes)
-    .where(and(eq(notes.contactId, contactId), isNull(notes.deletedAt)))
-    .orderBy(desc(notes.createdAt), desc(notes.id));
-});
+export const listNotes = safeQuery(
+  "listNotes",
+  async (ownerId: string, contactId: number) => {
+    return db
+      .select()
+      .from(notes)
+      .where(
+        and(
+          ownNote(ownerId),
+          eq(notes.contactId, contactId),
+          isNull(notes.deletedAt),
+        ),
+      )
+      .orderBy(desc(notes.createdAt), desc(notes.id));
+  },
+);
 
 export const createContact = safeQuery(
   "createContact",
-  async (input: ContactInput) => {
+  async (ownerId: string, input: ContactInput) => {
     const rows = await db
       .insert(contacts)
-      .values(input)
+      .values({ ...input, ownerId })
       .returning({ id: contacts.id, name: contacts.name });
 
     return rows[0];
@@ -238,6 +285,7 @@ export type UpdateContactResult = "updated" | "changed_elsewhere" | "not_found";
 export const updateContact = safeQuery(
   "updateContact",
   async (
+    ownerId: string,
     id: number,
     input: ContactInput,
     expectedUpdatedAt: Date,
@@ -247,6 +295,7 @@ export const updateContact = safeQuery(
       .set({ ...input, updatedAt: new Date() })
       .where(
         and(
+          ownContact(ownerId),
           eq(contacts.id, id),
           isNull(contacts.deletedAt),
           // The browser keeps time to the millisecond, the database to the
@@ -260,7 +309,7 @@ export const updateContact = safeQuery(
       return "updated";
     }
 
-    return (await getContact(id)) ? "changed_elsewhere" : "not_found";
+    return (await getContact(ownerId, id)) ? "changed_elsewhere" : "not_found";
   },
 );
 
@@ -303,7 +352,10 @@ export type KeepInTouchDue = {
 
 export const getKeepInTouchDue = safeQuery(
   "getKeepInTouchDue",
-  async (contactId: number): Promise<KeepInTouchDue | undefined> => {
+  async (
+    ownerId: string,
+    contactId: number,
+  ): Promise<KeepInTouchDue | undefined> => {
     const rows = await db
       .select({
         dueDay: sql<string>`${dueDay}::text`,
@@ -312,6 +364,7 @@ export const getKeepInTouchDue = safeQuery(
       .from(contacts)
       .where(
         and(
+          ownContact(ownerId),
           eq(contacts.id, contactId),
           isNull(contacts.deletedAt),
           isNotNull(contacts.keepInTouchEvery),
@@ -335,7 +388,7 @@ export type OverdueContact = {
 // Most overdue first; equal ones in the order of the contact list.
 export const listOverdueContacts = safeQuery(
   "listOverdueContacts",
-  async (): Promise<OverdueContact[]> => {
+  async (ownerId: string): Promise<OverdueContact[]> => {
     const rows = await db
       .select({
         id: contacts.id,
@@ -347,6 +400,7 @@ export const listOverdueContacts = safeQuery(
       .from(contacts)
       .where(
         and(
+          ownContact(ownerId),
           isNull(contacts.deletedAt),
           isNotNull(contacts.keepInTouchEvery),
           sql`${overdueDays} > 0`,
@@ -371,7 +425,7 @@ export const listOverdueContacts = safeQuery(
 // does not hold the interval.
 export const setKeepInTouch = safeQuery(
   "setKeepInTouch",
-  async (id: number, every: KeepInTouchInterval | null) => {
+  async (ownerId: string, id: number, every: KeepInTouchInterval | null) => {
     const rows = await db
       .update(contacts)
       .set({
@@ -386,20 +440,38 @@ export const setKeepInTouch = safeQuery(
               else now()
             end`,
       })
-      .where(and(eq(contacts.id, id), isNull(contacts.deletedAt)))
+      .where(
+        and(
+          ownContact(ownerId),
+          eq(contacts.id, id),
+          isNull(contacts.deletedAt),
+        ),
+      )
       .returning({ id: contacts.id });
 
     return rows[0];
   },
 );
 
+// Only into a contact of the owner that is not deleted: the note is added
+// by the same statement that finds the contact.
 export const addNote = safeQuery(
   "addNote",
-  async (contactId: number, body: string) => {
-    const rows = await db
-      .insert(notes)
-      .values({ contactId, body })
-      .returning({ id: notes.id });
+  async (
+    ownerId: string,
+    contactId: number,
+    body: string,
+  ): Promise<{ id: number } | undefined> => {
+    const rows = await db.execute<{ id: number }>(sql`
+      insert into ${notes} (contact_id, body)
+      select ${contacts.id}, ${body} from ${contacts}
+      where ${and(
+        ownContact(ownerId),
+        eq(contacts.id, contactId),
+        isNull(contacts.deletedAt),
+      )}
+      returning id
+    `);
 
     return rows[0];
   },
@@ -411,8 +483,8 @@ const CONTACTED_NOTE = "Связались";
 
 export const addContactedNote = safeQuery(
   "addContactedNote",
-  async (contactId: number) => {
-    return addNote(contactId, CONTACTED_NOTE);
+  async (ownerId: string, contactId: number) => {
+    return addNote(ownerId, contactId, CONTACTED_NOTE);
   },
 );
 
@@ -421,11 +493,12 @@ export const addContactedNote = safeQuery(
 // id from erasing an ordinary note.
 export const eraseContactedNote = safeQuery(
   "eraseContactedNote",
-  async (id: number) => {
+  async (ownerId: string, id: number) => {
     const rows = await db
       .delete(notes)
       .where(
         and(
+          ownNote(ownerId),
           eq(notes.id, id),
           eq(notes.body, CONTACTED_NOTE),
           isNull(notes.deletedAt),
@@ -443,33 +516,54 @@ export const eraseContactedNote = safeQuery(
 // so an hour leaves plenty of room for a toast that is still open.
 const ERASE_DELETED_AFTER = sql`interval '1 hour'`;
 
-async function eraseExpiredDeletions() {
+async function eraseExpiredDeletions(ownerId: string) {
   const expired = sql`now() - ${ERASE_DELETED_AFTER}`;
 
-  await db.delete(notes).where(lt(notes.deletedAt, expired));
+  // Only the rows of this user: a request never touches anybody else's rows,
+  // not even deleted ones.
+  await db
+    .delete(notes)
+    .where(and(ownNote(ownerId), lt(notes.deletedAt, expired)));
   // Notes of an erased contact go with it (on delete cascade).
-  await db.delete(contacts).where(lt(contacts.deletedAt, expired));
+  await db
+    .delete(contacts)
+    .where(and(ownContact(ownerId), lt(contacts.deletedAt, expired)));
 }
 
-export const deleteContact = safeQuery("deleteContact", async (id: number) => {
-  await eraseExpiredDeletions();
+export const deleteContact = safeQuery(
+  "deleteContact",
+  async (ownerId: string, id: number) => {
+    await eraseExpiredDeletions(ownerId);
 
-  const rows = await db
-    .update(contacts)
-    .set({ deletedAt: sql`now()` })
-    .where(and(eq(contacts.id, id), isNull(contacts.deletedAt)))
-    .returning({ id: contacts.id, name: contacts.name });
+    const rows = await db
+      .update(contacts)
+      .set({ deletedAt: sql`now()` })
+      .where(
+        and(
+          ownContact(ownerId),
+          eq(contacts.id, id),
+          isNull(contacts.deletedAt),
+        ),
+      )
+      .returning({ id: contacts.id, name: contacts.name });
 
-  return rows[0];
-});
+    return rows[0];
+  },
+);
 
 export const restoreContact = safeQuery(
   "restoreContact",
-  async (id: number) => {
+  async (ownerId: string, id: number) => {
     const rows = await db
       .update(contacts)
       .set({ deletedAt: null })
-      .where(and(eq(contacts.id, id), isNotNull(contacts.deletedAt)))
+      .where(
+        and(
+          ownContact(ownerId),
+          eq(contacts.id, id),
+          isNotNull(contacts.deletedAt),
+        ),
+      )
       .returning({ id: contacts.id, name: contacts.name });
 
     return rows[0];
@@ -480,41 +574,57 @@ export const restoreContact = safeQuery(
 // cannot wipe out a contact that is in use.
 export const eraseDeletedContact = safeQuery(
   "eraseDeletedContact",
-  async (id: number) => {
+  async (ownerId: string, id: number) => {
     await db
       .delete(contacts)
-      .where(and(eq(contacts.id, id), isNotNull(contacts.deletedAt)));
+      .where(
+        and(
+          ownContact(ownerId),
+          eq(contacts.id, id),
+          isNotNull(contacts.deletedAt),
+        ),
+      );
   },
 );
 
-export const deleteNote = safeQuery("deleteNote", async (id: number) => {
-  await eraseExpiredDeletions();
+export const deleteNote = safeQuery(
+  "deleteNote",
+  async (ownerId: string, id: number) => {
+    await eraseExpiredDeletions(ownerId);
 
-  const rows = await db
-    .update(notes)
-    .set({ deletedAt: sql`now()` })
-    .where(and(eq(notes.id, id), isNull(notes.deletedAt)))
-    .returning({ id: notes.id });
+    const rows = await db
+      .update(notes)
+      .set({ deletedAt: sql`now()` })
+      .where(and(ownNote(ownerId), eq(notes.id, id), isNull(notes.deletedAt)))
+      .returning({ id: notes.id });
 
-  return rows[0];
-});
+    return rows[0];
+  },
+);
 
-export const restoreNote = safeQuery("restoreNote", async (id: number) => {
-  const rows = await db
-    .update(notes)
-    .set({ deletedAt: null })
-    .where(and(eq(notes.id, id), isNotNull(notes.deletedAt)))
-    .returning({ id: notes.id });
+export const restoreNote = safeQuery(
+  "restoreNote",
+  async (ownerId: string, id: number) => {
+    const rows = await db
+      .update(notes)
+      .set({ deletedAt: null })
+      .where(
+        and(ownNote(ownerId), eq(notes.id, id), isNotNull(notes.deletedAt)),
+      )
+      .returning({ id: notes.id });
 
-  return rows[0];
-});
+    return rows[0];
+  },
+);
 
 export const eraseDeletedNote = safeQuery(
   "eraseDeletedNote",
-  async (id: number) => {
+  async (ownerId: string, id: number) => {
     await db
       .delete(notes)
-      .where(and(eq(notes.id, id), isNotNull(notes.deletedAt)));
+      .where(
+        and(ownNote(ownerId), eq(notes.id, id), isNotNull(notes.deletedAt)),
+      );
   },
 );
 
@@ -536,7 +646,7 @@ export type GroupListItem = {
 // By alphabet, like the contact list; an empty group has a count of 0.
 export const listGroups = safeQuery(
   "listGroups",
-  async (): Promise<GroupListItem[]> => {
+  async (ownerId: string): Promise<GroupListItem[]> => {
     return db
       .select({
         id: groups.id,
@@ -549,9 +659,11 @@ export const listGroups = safeQuery(
         contacts,
         and(
           eq(contacts.id, contactGroups.contactId),
+          ownContact(ownerId),
           isNull(contacts.deletedAt),
         ),
       )
+      .where(ownGroup(ownerId))
       .groupBy(groups.id)
       .orderBy(sql`${groups.name} collate "ru-x-icu"`, asc(groups.id));
   },
@@ -559,16 +671,20 @@ export const listGroups = safeQuery(
 
 export type GroupRef = { id: number; name: string };
 
-// Makes the group, or finds the one that already has this name. Two tabs can
+// Makes the group, or finds the one of this user that already has this name.
+// Another user's group with the same name is not in the way. Two tabs can
 // make the same name at once: the unique index lets one of them in, and the
 // other gets the group that won.
 export const createGroup = safeQuery(
   "createGroup",
-  async (name: string): Promise<{ group: GroupRef; created: boolean }> => {
+  async (
+    ownerId: string,
+    name: string,
+  ): Promise<{ group: GroupRef; created: boolean }> => {
     for (let attempt = 0; attempt < 3; attempt++) {
       const inserted = await db
         .insert(groups)
-        .values({ name })
+        .values({ ownerId, name })
         .onConflictDoNothing()
         .returning({ id: groups.id, name: groups.name });
 
@@ -580,7 +696,10 @@ export const createGroup = safeQuery(
         .select({ id: groups.id, name: groups.name })
         .from(groups)
         .where(
-          sql`${groupNameKey(groups.name)} = ${groupNameKey(sql`${name}`)}`,
+          and(
+            ownGroup(ownerId),
+            sql`${groupNameKey(groups.name)} = ${groupNameKey(sql`${name}`)}`,
+          ),
         )
         .limit(1);
 
@@ -605,6 +724,7 @@ export type SetContactGroupResult =
 export const setContactGroup = safeQuery(
   "setContactGroup",
   async (
+    ownerId: string,
     contactId: number,
     groupId: number,
     member: boolean,
@@ -613,12 +733,18 @@ export const setContactGroup = safeQuery(
       db
         .select({ id: contacts.id })
         .from(contacts)
-        .where(and(eq(contacts.id, contactId), isNull(contacts.deletedAt)))
+        .where(
+          and(
+            ownContact(ownerId),
+            eq(contacts.id, contactId),
+            isNull(contacts.deletedAt),
+          ),
+        )
         .limit(1),
       db
         .select({ id: groups.id })
         .from(groups)
-        .where(eq(groups.id, groupId))
+        .where(and(ownGroup(ownerId), eq(groups.id, groupId)))
         .limit(1),
     ]);
 
@@ -653,23 +779,23 @@ export const setContactGroup = safeQuery(
 // The groups of one contact, by alphabet.
 export const listContactGroups = safeQuery(
   "listContactGroups",
-  async (contactId: number): Promise<GroupRef[]> => {
+  async (ownerId: string, contactId: number): Promise<GroupRef[]> => {
     return db
       .select({ id: groups.id, name: groups.name })
       .from(contactGroups)
       .innerJoin(groups, eq(groups.id, contactGroups.groupId))
-      .where(eq(contactGroups.contactId, contactId))
+      .where(and(ownGroup(ownerId), eq(contactGroups.contactId, contactId)))
       .orderBy(sql`${groups.name} collate "ru-x-icu"`, asc(groups.id));
   },
 );
 
 export const findGroup = safeQuery(
   "findGroup",
-  async (id: number): Promise<GroupRef | undefined> => {
+  async (ownerId: string, id: number): Promise<GroupRef | undefined> => {
     const rows = await db
       .select({ id: groups.id, name: groups.name })
       .from(groups)
-      .where(eq(groups.id, id))
+      .where(and(ownGroup(ownerId), eq(groups.id, id)))
       .limit(1);
 
     return rows[0];
@@ -683,15 +809,21 @@ export type RenameGroupResult =
   | { status: "taken"; group: GroupRef };
 
 // A group may take the name it has now, or the same name in other letters
-// ("теннис" -> "Теннис"): only another group with the same name is in the way.
+// ("теннис" -> "Теннис"): only another group of the same user with the same
+// name is in the way.
 export const renameGroup = safeQuery(
   "renameGroup",
-  async (id: number, name: string): Promise<RenameGroupResult> => {
+  async (
+    ownerId: string,
+    id: number,
+    name: string,
+  ): Promise<RenameGroupResult> => {
     const other = await db
       .select({ id: groups.id, name: groups.name })
       .from(groups)
       .where(
         and(
+          ownGroup(ownerId),
           sql`${groups.id} <> ${id}`,
           sql`${groupNameKey(groups.name)} = ${groupNameKey(sql`${name}`)}`,
         ),
@@ -705,7 +837,7 @@ export const renameGroup = safeQuery(
     const rows = await db
       .update(groups)
       .set({ name })
-      .where(eq(groups.id, id))
+      .where(and(ownGroup(ownerId), eq(groups.id, id)))
       .returning({ id: groups.id, name: groups.name });
 
     return rows[0]
@@ -718,10 +850,10 @@ export const renameGroup = safeQuery(
 // contacts stay.
 export const deleteGroup = safeQuery(
   "deleteGroup",
-  async (id: number): Promise<GroupRef | undefined> => {
+  async (ownerId: string, id: number): Promise<GroupRef | undefined> => {
     const rows = await db
       .delete(groups)
-      .where(eq(groups.id, id))
+      .where(and(ownGroup(ownerId), eq(groups.id, id)))
       .returning({ id: groups.id, name: groups.name });
 
     return rows[0];

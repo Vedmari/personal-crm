@@ -25,6 +25,7 @@ import {
   listNotes,
 } from "@/db/queries";
 import { formatDay, formatNoteDate, pluralize, toTelHref } from "@/lib/format";
+import { requireUserId } from "@/lib/current-user";
 import { listHref } from "@/lib/list-filter";
 import { cn } from "@/lib/utils";
 import { parseId } from "@/lib/validation";
@@ -90,12 +91,13 @@ async function ContactCard({
     notFound();
   }
 
+  const ownerId = await requireUserId();
   const [contact, notes, due, contactGroups, allGroups] = await Promise.all([
-    getContact(id),
-    listNotes(id),
-    getKeepInTouchDue(id),
-    listContactGroups(id),
-    listGroups(),
+    getContact(ownerId, id),
+    listNotes(ownerId, id),
+    getKeepInTouchDue(ownerId, id),
+    listContactGroups(ownerId, id),
+    listGroups(ownerId),
   ]);
 
   if (!contact) {

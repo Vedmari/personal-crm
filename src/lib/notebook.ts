@@ -47,11 +47,21 @@ export const BOOKMARK_STORAGE_KEY = "notebook-bookmark";
 
 export type Bookmark = { id: number; name: string };
 
-// The last contact card opened in this browser, as saved in localStorage.
-// Anything else (nothing saved, another app's value, a broken record) is no
-// bookmark.
-export function readBookmark(raw: string | null): Bookmark | null {
-  if (!raw) {
+// What localStorage keeps: the card and the user who opened it.
+export function writeBookmark(bookmark: Bookmark, userId: string): string {
+  return JSON.stringify({ ...bookmark, userId });
+}
+
+// The last contact card opened in this browser by the signed-in user, as
+// saved in localStorage. Another user's bookmark, one saved before there were
+// users, and anything else (nothing saved, another app's value, a broken
+// record) is no bookmark: the ribbon must not lead to somebody else's card or
+// name somebody else's contact.
+export function readBookmark(
+  raw: string | null,
+  userId: string | null,
+): Bookmark | null {
+  if (!raw || userId === null) {
     return null;
   }
 
@@ -62,14 +72,15 @@ export function readBookmark(raw: string | null): Bookmark | null {
       return null;
     }
 
-    const { id, name } = value as Record<string, unknown>;
+    const { id, name, userId: owner } = value as Record<string, unknown>;
 
     if (
       typeof id !== "number" ||
       !Number.isInteger(id) ||
       id < 1 ||
       typeof name !== "string" ||
-      name === ""
+      name === "" ||
+      owner !== userId
     ) {
       return null;
     }

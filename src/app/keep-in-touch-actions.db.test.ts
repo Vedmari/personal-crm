@@ -17,6 +17,7 @@ import {
   formOf,
   markContactDeleted,
   setTestKeepInTouch,
+  USER_A,
 } from "../../test/factories";
 import {
   deleteNoteAction,
@@ -29,7 +30,7 @@ import {
 const CONTACT_NOT_FOUND = "Контакт не найден. Обновите страницу.";
 
 const overdueNames = async () =>
-  (await listOverdueContacts()).map((contact) => contact.name);
+  (await listOverdueContacts(USER_A)).map((contact) => contact.name);
 
 // An overdue contact with one note, for the "Пора связаться" block.
 async function createOverdueContact(name: string): Promise<number> {
@@ -54,7 +55,7 @@ describe("setKeepInTouchAction", () => {
   it("has no interval for a new contact [По умолчанию частота не задана]", async () => {
     const anna = await createTestContact("Анна");
 
-    expect((await getContact(anna))?.keepInTouchEvery).toBeNull();
+    expect((await getContact(USER_A, anna))?.keepInTouchEvery).toBeNull();
   });
 
   it("saves the interval at once, and a fresh read still shows it [Частота сохраняется без кнопки «Изменить»]", async () => {
@@ -64,7 +65,7 @@ describe("setKeepInTouchAction", () => {
       ok: true,
       data: undefined,
     });
-    expect((await getContact(anna))?.keepInTouchEvery).toBe("month");
+    expect((await getContact(USER_A, anna))?.keepInTouchEvery).toBe("month");
   });
 
   it("clears the interval for «Не задано»", async () => {
@@ -73,8 +74,8 @@ describe("setKeepInTouchAction", () => {
 
     await setKeepInTouchAction(anna, null);
 
-    expect((await getContact(anna))?.keepInTouchEvery).toBeNull();
-    expect(await getKeepInTouchDue(anna)).toBeUndefined();
+    expect((await getContact(USER_A, anna))?.keepInTouchEvery).toBeNull();
+    expect(await getKeepInTouchDue(USER_A, anna)).toBeUndefined();
   });
 
   it("restarts the count when a different interval is chosen [Частоту сменили у контакта без заметок]", async () => {
@@ -88,10 +89,12 @@ describe("setKeepInTouchAction", () => {
 
     await setKeepInTouchAction(anna, "month");
 
-    const since = (await getContact(anna))?.keepInTouchSince;
+    const since = (await getContact(USER_A, anna))?.keepInTouchSince;
 
     expect(since?.getTime()).toBeGreaterThanOrEqual(before - 1000);
-    expect((await getKeepInTouchDue(anna))?.overdueDays).toBeLessThan(0);
+    expect((await getKeepInTouchDue(USER_A, anna))?.overdueDays).toBeLessThan(
+      0,
+    );
   });
 
   it("keeps the count when the same interval is chosen again", async () => {
@@ -101,12 +104,12 @@ describe("setKeepInTouchAction", () => {
 
     await setKeepInTouchAction(anna, "month");
 
-    expect((await getContact(anna))?.keepInTouchSince).toEqual(chosen);
+    expect((await getContact(USER_A, anna))?.keepInTouchSince).toEqual(chosen);
   });
 
   it("lets the edit form of another tab save, and keeps the new interval [Смена частоты не мешает форме «Изменить» в другой вкладке]", async () => {
     const anna = await createTestContact("Анна");
-    const before = await getContact(anna);
+    const before = await getContact(USER_A, anna);
 
     await setKeepInTouchAction(anna, "month");
 
@@ -118,7 +121,7 @@ describe("setKeepInTouchAction", () => {
 
     expect(saved).toEqual({ ok: true, data: undefined });
 
-    const after = await getContact(anna);
+    const after = await getContact(USER_A, anna);
 
     expect(after?.name).toBe("Анна Смирнова");
     expect(after?.keepInTouchEvery).toBe("month");
@@ -142,24 +145,26 @@ describe("markContactedAction", () => {
 
     await markContacted(anna);
 
-    expect((await listNotes(anna)).map((note) => note.body)).toEqual([
+    expect((await listNotes(USER_A, anna)).map((note) => note.body)).toEqual([
       "Связались",
       "Созвонились",
     ]);
     expect(await overdueNames()).toEqual([]);
-    expect((await getKeepInTouchDue(anna))?.overdueDays).toBeLessThan(0);
+    expect((await getKeepInTouchDue(USER_A, anna))?.overdueDays).toBeLessThan(
+      0,
+    );
   });
 
   it("counts from the previous note again once «Связались» is deleted [Заметка «Связались» — обычная заметка]", async () => {
     const anna = await createOverdueContact("Анна");
-    const dueBefore = (await getKeepInTouchDue(anna))?.dueDay;
+    const dueBefore = (await getKeepInTouchDue(USER_A, anna))?.dueDay;
     const noteId = await markContacted(anna);
 
     expect(await deleteNoteAction(noteId)).toEqual({
       ok: true,
       data: undefined,
     });
-    expect((await getKeepInTouchDue(anna))?.dueDay).toBe(dueBefore);
+    expect((await getKeepInTouchDue(USER_A, anna))?.dueDay).toBe(dueBefore);
     expect(await overdueNames()).toEqual(["Анна"]);
   });
 
@@ -172,7 +177,7 @@ describe("markContactedAction", () => {
       errors: {},
       message: CONTACT_NOT_FOUND,
     });
-    expect(await listNotes(anna)).toHaveLength(1);
+    expect(await listNotes(USER_A, anna)).toHaveLength(1);
   });
 });
 
@@ -198,6 +203,6 @@ describe("undoMarkContactedAction", () => {
     const result = await undoMarkContactedAction(noteId);
 
     expect(result.ok).toBe(false);
-    expect(await listNotes(anna)).toHaveLength(1);
+    expect(await listNotes(USER_A, anna)).toHaveLength(1);
   });
 });

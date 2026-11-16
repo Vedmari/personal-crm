@@ -12,6 +12,7 @@ import {
 } from "@/components/paper";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listGroups } from "@/db/queries";
+import { requireUserId } from "@/lib/current-user";
 import { cn } from "@/lib/utils";
 
 // Text on the sheet sits on its 32px rules: a line starts 10px below a rule,
@@ -56,7 +57,7 @@ export default function GroupsPage() {
 }
 
 async function GroupsList() {
-  const groups = await listGroups();
+  const groups = await listGroups(await requireUserId());
 
   if (groups.length === 0) {
     return (

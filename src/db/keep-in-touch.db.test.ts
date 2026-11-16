@@ -14,23 +14,24 @@ import {
   daysAgo,
   markContactDeleted,
   setTestKeepInTouch,
+  USER_A,
 } from "../../test/factories";
 
 // Long before every note of the tests: the deadline counts from notes.
 const LONG_AGO = new Date("2025-01-01T12:00:00+03:00");
 
 const dueDayOf = async (contactId: number) =>
-  (await getKeepInTouchDue(contactId))?.dueDay;
+  (await getKeepInTouchDue(USER_A, contactId))?.dueDay;
 
 const overdueNames = async () =>
-  (await listOverdueContacts()).map((contact) => contact.name);
+  (await listOverdueContacts(USER_A)).map((contact) => contact.name);
 
 describe("getKeepInTouchDue", () => {
   it("has no deadline while the interval is not set [По умолчанию частота не задана]", async () => {
     const anna = await createTestContact("Анна");
     await addTestNote(anna, new Date("2026-09-10T12:00:00+03:00"));
 
-    expect(await getKeepInTouchDue(anna)).toBeUndefined();
+    expect(await getKeepInTouchDue(USER_A, anna)).toBeUndefined();
   });
 
   it("counts the deadline from the latest note [Новая заметка запускает срок заново]", async () => {
@@ -74,13 +75,13 @@ describe("getKeepInTouchDue", () => {
       new Date("2026-10-24T12:00:00+03:00"),
     );
 
-    await deleteNote(newest);
+    await deleteNote(USER_A, newest);
     expect(await dueDayOf(anna)).toBe("2026-10-10");
 
-    await deleteNote(older);
+    await deleteNote(USER_A, older);
     expect(await dueDayOf(anna)).toBe("2026-09-01");
 
-    await restoreNote(newest);
+    await restoreNote(USER_A, newest);
     expect(await dueDayOf(anna)).toBe("2026-11-24");
   });
 
@@ -111,8 +112,8 @@ describe("getKeepInTouchDue", () => {
     await addTestNote(onTheDay, daysAgo(7));
     await addTestNote(dayAfter, daysAgo(8));
 
-    expect((await getKeepInTouchDue(onTheDay))?.overdueDays).toBe(0);
-    expect((await getKeepInTouchDue(dayAfter))?.overdueDays).toBe(1);
+    expect((await getKeepInTouchDue(USER_A, onTheDay))?.overdueDays).toBe(0);
+    expect((await getKeepInTouchDue(USER_A, dayAfter))?.overdueDays).toBe(1);
     expect(await overdueNames()).toEqual(["Борис"]);
   });
 
@@ -140,7 +141,7 @@ describe("listOverdueContacts", () => {
     await setTestKeepInTouch(anna, "month", LONG_AGO);
     await addTestNote(anna, new Date("2026-09-10T12:00:00+03:00"));
 
-    expect(await listOverdueContacts()).toEqual([
+    expect(await listOverdueContacts(USER_A)).toEqual([
       expect.objectContaining({
         id: anna,
         name: "Анна Смирнова",
@@ -154,7 +155,7 @@ describe("listOverdueContacts", () => {
     const anna = await createTestContact("Анна");
     await setTestKeepInTouch(anna, "month", daysAgo(40));
 
-    expect(await listOverdueContacts()).toEqual([
+    expect(await listOverdueContacts(USER_A)).toEqual([
       expect.objectContaining({ name: "Анна", lastNoteDay: null }),
     ]);
   });
@@ -185,7 +186,7 @@ describe("listOverdueContacts", () => {
     await markContactDeleted(anna);
     expect(await overdueNames()).toEqual([]);
 
-    await restoreContact(anna);
+    await restoreContact(USER_A, anna);
     expect(await overdueNames()).toEqual(["Анна"]);
   });
 
@@ -195,7 +196,7 @@ describe("listOverdueContacts", () => {
     await addTestNote(anna, daysAgo(3));
     await createTestContact("Борис");
 
-    expect(await listOverdueContacts()).toEqual([]);
+    expect(await listOverdueContacts(USER_A)).toEqual([]);
   });
 
   it("puts the most overdue first, whatever the interval [Больше дней просрочки — выше]", async () => {
@@ -207,7 +208,7 @@ describe("listOverdueContacts", () => {
     // About 30 days: a year is 12 calendar months, not 365 days.
     await addTestNote(yearly, daysAgo(365 + 30));
 
-    const overdue = await listOverdueContacts();
+    const overdue = await listOverdueContacts(USER_A);
 
     expect(overdue.map((contact) => contact.name)).toEqual(["Борис", "Анна"]);
     expect(overdue[0].overdueDays).toBeGreaterThan(25);

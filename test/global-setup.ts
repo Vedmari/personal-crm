@@ -31,10 +31,18 @@ function loadEnvFile(): void {
 // Database work runs in separate Node.js processes, outside Vitest's loader
 // (see test/create-database.mts). The address goes in the environment, not in
 // the arguments: it holds the password.
+//
+// The rows a previous run left behind need an owner when a migration gives
+// every contact one (0005): they go to a test user. Every test empties the
+// tables anyway.
 function runScript(script: string, testUrl: string): void {
   try {
     execFileSync(process.execPath, [script], {
-      env: { ...process.env, DATABASE_URL: testUrl },
+      env: {
+        ...process.env,
+        DATABASE_URL: testUrl,
+        OWNER_EMAIL: "leftover-owner@example.com",
+      },
       stdio: ["ignore", "ignore", "pipe"],
       encoding: "utf8",
     });
