@@ -50,6 +50,34 @@ function addNote(contactName: string, body: string) {
   };
 }
 
+// Writes down every animation that starts on the notebook cover or inside it,
+// from the first moment of the page.
+async function recordCoverAnimations(page: Page) {
+  await page.addInitScript(() => {
+    const started: string[] = [];
+    Object.assign(window, { coverAnimations: started });
+
+    document.addEventListener(
+      "animationstart",
+      (event) => {
+        if (
+          event.target instanceof Element &&
+          event.target.closest("[data-notebook-cover]")
+        ) {
+          started.push(event.animationName);
+        }
+      },
+      true,
+    );
+  });
+}
+
+function coverAnimations(page: Page) {
+  return page.evaluate(
+    () => (window as unknown as { coverAnimations: string[] }).coverAnimations,
+  );
+}
+
 // Writes down every view transition the page starts: its types and the
 // animations that run in it.
 async function recordPageTurns(page: Page) {
@@ -189,17 +217,18 @@ test.describe("cover", () => {
     page,
   }) => {
     await resetDatabase();
+    await recordCoverAnimations(page);
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/");
 
-    await expect(cover(page)).toBeVisible();
-    const animations = await cover(page).evaluate((element) =>
-      element
-        .getAnimations({ subtree: true })
-        .map((animation) => (animation as CSSAnimation).animationName),
-    );
-    expect(animations).toEqual(["notebook-cover-fade"]);
+    // The fade is over 0.45 s after the first paint, often before the page
+    // has loaded, so the animations are written down from the very start.
+    // An animation runs only on a cover that is shown.
+    await expect
+      .poll(() => coverAnimations(page))
+      .toEqual(["notebook-cover-fade"]);
     await expect(cover(page)).toBeHidden({ timeout: 2000 });
+    expect(await coverAnimations(page)).toEqual(["notebook-cover-fade"]);
   });
 });
 
