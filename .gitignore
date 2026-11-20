@@ -32,3 +32,6 @@ next-env.d.ts
 
 # signed-in browser state of the e2e user (e2e/auth.setup.ts)
 /e2e/.auth/
+
+# prod-check reports list the weak spots of the product; the repository is public
+/prod-check/
