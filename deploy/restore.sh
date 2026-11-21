@@ -15,12 +15,15 @@
 # The app version does not change and migrations are not run. The backup name
 # carries the version it was made for: if the app runs another version, roll
 # the app back first (deploy/rollback.sh).
+#
+# Production only. The test stand database is made again from a production
+# backup with deploy/reset-staging-db.sh.
 set -euo pipefail
 
-APP_DIR=/opt/crm/prod
-HEALTH_URL=http://127.0.0.1:3000/health
-
-source "$APP_DIR/deploy/lib.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+use_environment prod
+# A deploy that starts meanwhile waits until the restore ends, and the other way round.
+lock_environment
 
 usage() {
   printf '\nUsage: ssh -t crm bash %s/deploy/restore.sh <backup file>\n' "$APP_DIR"
@@ -38,17 +41,6 @@ list_backups() {
 # Version in the backup name: 2026-11-06_153012_d7ee8bf.dump -> d7ee8bf.
 backup_version() {
   basename "$1" | sed -n 's/^[0-9-]*_[0-9]*_\([0-9a-f]\{7\}\|unknown\)[._].*$/\1/p'
-}
-
-# Drops the database, creates it again and loads the dump from stdin.
-replace_database() {
-  compose exec -T postgres sh -c '
-    set -e
-    dropdb --username="$POSTGRES_USER" --force --if-exists "$POSTGRES_DB"
-    createdb --username="$POSTGRES_USER" "$POSTGRES_DB"
-    pg_restore --username="$POSTGRES_USER" --dbname="$POSTGRES_DB" \
-      --no-owner --exit-on-error --single-transaction
-  ' <"$1"
 }
 
 [ -s "$APP_DIR/.env" ] || fail "$APP_DIR/.env is empty: the app is not set up on this server."

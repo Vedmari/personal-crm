@@ -5,11 +5,13 @@
 #
 # Runs scripts/seed.mts from the image that is deployed now. The generator only
 # inserts and refuses to run when the database already has contacts.
+#
+# Production only: the test stand gets a copy of the production data instead.
 set -euo pipefail
 
-APP_DIR=/opt/crm/prod
-
-source "$APP_DIR/deploy/lib.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+use_environment prod
+lock_environment
 
 image="$(read_release IMAGE)"
 tag="$(read_release IMAGE_TAG)"
