@@ -1,15 +1,23 @@
-# Production stack on the server: compose project "prod" in /opt/crm/prod.
-# Started only by deploy/deploy.sh and deploy/rollback.sh, which pass:
-#   - /opt/crm/prod/.env  - secrets and settings, mode 600:
+# The app stack on the server, one file for both environments:
+#   production   - compose project "prod" in /opt/crm/prod
+#   the test stand - compose project "staging" in /opt/crm/staging
+# Each project has its own containers, database volume, .env and port.
+# Started only by the scripts in deploy/ (lib.sh, `compose`), which pass:
+#   - <folder>/.env       - secrets and settings of the environment, mode 600:
 #       POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB - the database;
 #       BETTER_AUTH_SECRET, BETTER_AUTH_URL           - the sign-in;
 #       SMTP_URL                                      - where sign-in emails go (Resend);
 #       OWNER_EMAIL                                   - the owner of the data that was
 #                                                       there before the sign-in
 #   - IMAGE, IMAGE_TAG    - the app image and its version (git commit SHA)
+#   - APP_PORT            - the port of the app on 127.0.0.1: 3000 production, 3001 the test stand
 # A setting that is not there stops the deploy at its first step
 # (`compose config`), before the backup and the migrations.
 # Local development uses docker-compose.yml in the repository root instead.
+#
+# Memory limits: the server has 2 GB for both environments and the landing
+# page. A container that goes over its limit is stopped and started again
+# (restart: unless-stopped), and the other containers are not affected.
 
 x-logging:
   &logging # Container logs are capped at 3 files of 10 MB so they cannot fill the disk.
@@ -19,7 +27,7 @@ x-logging:
     max-file: "3"
 
 x-database-url: &database-url
-  DATABASE_URL: "postgresql://${POSTGRES_USER:?Set POSTGRES_USER in /opt/crm/prod/.env}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in /opt/crm/prod/.env}@postgres:5432/${POSTGRES_DB:?Set POSTGRES_DB in /opt/crm/prod/.env}"
+  DATABASE_URL: "postgresql://${POSTGRES_USER:?Set POSTGRES_USER in the .env of this environment}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the .env of this environment}@postgres:5432/${POSTGRES_DB:?Set POSTGRES_DB in the .env of this environment}"
 
 services:
   postgres:
@@ -32,6 +40,7 @@ services:
     # No published port: only containers of this project reach the database.
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    mem_limit: 256m
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -48,10 +57,11 @@ services:
       <<: *database-url
       # The contacts, notes and groups that are already in the database, and
       # the test data, go to the user with this email.
-      OWNER_EMAIL: ${OWNER_EMAIL:?Set OWNER_EMAIL in /opt/crm/prod/.env}
+      OWNER_EMAIL: ${OWNER_EMAIL:?Set OWNER_EMAIL in the .env of this environment}
     depends_on:
       postgres:
         condition: service_healthy
+    mem_limit: 256m
     profiles: ["tools"]
     logging: *logging
 
@@ -60,13 +70,17 @@ services:
     restart: unless-stopped
     environment:
       <<: *database-url
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in /opt/crm/prod/.env}
-      # https://app.lichnaya-crm.ru: the links in the letters lead here.
-      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?Set BETTER_AUTH_URL in /opt/crm/prod/.env}
-      SMTP_URL: ${SMTP_URL:?Set SMTP_URL in /opt/crm/prod/.env}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in the .env of this environment}
+      # The address of this environment: the links in the letters lead here,
+      # so a sign-in asked for on the test stand ends on the test stand.
+      # https://app.lichnaya-crm.ru production, https://test-app.lichnaya-crm.ru the test stand.
+      # The sign-in cookie has no domain: it stays on this address only.
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?Set BETTER_AUTH_URL in the .env of this environment}
+      SMTP_URL: ${SMTP_URL:?Set SMTP_URL in the .env of this environment}
     ports:
       # Only nginx on the same server can reach the app.
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:${APP_PORT:?APP_PORT is set by the deploy script}:3000"
+    mem_limit: 512m
     depends_on:
       postgres:
         condition: service_healthy

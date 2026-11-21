@@ -1,30 +1,41 @@
 #!/usr/bin/env bash
-# Deploys one version of the app on the server.
+# Deploys one version of the app to one environment on the server.
 # Called by GitHub Actions (.github/workflows/deploy.yml) after the image is in GHCR:
 #
-#   deploy.sh <image> <tag> <registry-user>    (registry token on stdin)
+#   deploy.sh <prod|staging> <image> <tag> <registry-user>    (registry token on stdin)
 #
-# Steps: pull the image -> start Postgres -> back up the database -> apply
-# migrations in a one-off container -> start the app on the new image ->
-# smoke-check /health -> keep only the current and the previous image.
+#   prod    - production, https://app.lichnaya-crm.ru
+#   staging - the test stand, https://test-app.lichnaya-crm.ru
+# Both get the same image; each runs the copy of this script in its own folder
+# (/opt/crm/prod/deploy, /opt/crm/staging/deploy).
+#
+# Steps: wait until no other deploy script runs on this environment -> pull
+# the image -> start Postgres -> production: back up the database; test stand:
+# if its database is empty, load a copy of production from the latest
+# production backup -> apply migrations in a one-off container -> start the
+# app on the new image -> smoke-check /health -> production: remove the
+# images that no environment needs.
 #
 # The backup goes to /opt/crm/prod/backups; its name carries the version that
 # ran before this deploy. It is restored only by hand with deploy/restore.sh.
+# The test stand is not backed up: its data is a copy of production, and a
+# spoiled copy is made again with deploy/reset-staging-db.sh.
 #
-# A failed backup or failed migrations stop the deploy: the app keeps running
-# the previous image.
+# A failed backup, a failed copy of production or failed migrations stop the
+# deploy: the app keeps running the previous image.
 # A failed smoke check stops the deploy with an error. There is no automatic
 # rollback: it is started by hand with deploy/rollback.sh.
 set -euo pipefail
 
-APP_DIR=/opt/crm/prod
-HEALTH_URL=http://127.0.0.1:3000/health
+usage="usage: deploy.sh <prod|staging> <image> <tag> <registry-user>"
+environment="${1:?$usage}"
+image="${2:?$usage}"
+tag="${3:?$usage}"
+registry_user="${4:?$usage}"
 
-image="${1:?usage: deploy.sh <image> <tag> <registry-user>}"
-tag="${2:?usage: deploy.sh <image> <tag> <registry-user>}"
-registry_user="${3:?usage: deploy.sh <image> <tag> <registry-user>}"
-
-source "$APP_DIR/deploy/lib.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+use_environment "$environment"
+lock_environment
 
 # Read by deploy/compose.yaml.
 export IMAGE="$image" IMAGE_TAG="$tag"
@@ -50,11 +61,26 @@ rm -rf "$docker_config"
 step "Starting the database"
 compose up --detach --wait postgres
 
-step "Backing up the database (version before this deploy: ${current_tag:-unknown})"
-if ! backup_file="$(backup_database "$current_tag")"; then
-  fail "Backup failed. Migrations were not applied: the app keeps running the previous version${current_tag:+ ($current_tag)}."
+if [ "$ENVIRONMENT" = prod ]; then
+  step "Backing up the database (version before this deploy: ${current_tag:-unknown})"
+  if ! backup_file="$(backup_database "$current_tag")"; then
+    fail "Backup failed. Migrations were not applied: the app keeps running the previous version${current_tag:+ ($current_tag)}."
+  fi
+  echo "$backup_file ($(file_size "$backup_file"))"
+else
+  step "Checking the test stand database"
+  tables="$(count_tables)" || fail "Could not read the test stand database."
+  if [ "$tables" = 0 ]; then
+    backup_file="$(latest_prod_backup)" ||
+      fail "The database is empty, and there is no production backup in $BACKUP_DIR to copy."
+    echo "The database is empty: loading a copy of production from $backup_file ($(file_size "$backup_file"))."
+    load_prod_backup "$backup_file" ||
+      fail "Could not load the copy of production. The app keeps running the previous version${current_tag:+ ($current_tag)}."
+  else
+    echo "The database has data ($tables tables): it stays as it is."
+    echo "To make it a fresh copy of production: ssh -t crm bash $APP_DIR/deploy/reset-staging-db.sh"
+  fi
 fi
-echo "$backup_file ($(file_size "$backup_file"))"
 
 step "Applying migrations"
 if ! compose run --rm migrate; then
@@ -68,11 +94,13 @@ write_release "$image" "$tag" "$previous_tag"
 step "Smoke check: $HEALTH_URL"
 if ! wait_for_health "$HEALTH_URL"; then
   fail "Smoke check failed: $tag is running but /health does not answer 200.
-Nothing was rolled back. Logs: ssh crm docker logs --tail 100 prod-app-1
-Rollback by hand: ssh crm $APP_DIR/deploy/rollback.sh"
+Nothing was rolled back. Logs: ssh crm docker logs --tail 100 $ENVIRONMENT-app-1
+Rollback by hand: ssh crm bash $APP_DIR/deploy/rollback.sh $ENVIRONMENT"
 fi
 
-step "Removing old images (keeping $tag${previous_tag:+ and $previous_tag})"
-remove_old_images "$image" "$tag" "$previous_tag"
+if [ "$ENVIRONMENT" = prod ]; then
+  step "Removing old images (keeping the current and the previous version of production and of the test stand)"
+  remove_old_images "$image"
+fi
 
-step "Deployed $tag"
+step "Deployed $tag to $ENVIRONMENT"
