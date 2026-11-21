@@ -2,7 +2,7 @@
 # Manual rollback: switches the app of one environment back to its previous image.
 # Never called automatically. Run it yourself:
 #
-#   ssh crm bash /opt/crm/prod/deploy/rollback.sh prod          (production)
+#   GitHub Actions -> Deploy prod -> Roll back                (production)
 #   ssh crm bash /opt/crm/staging/deploy/rollback.sh staging    (the test stand)
 #
 # Migrations are not undone: the previous version runs on the current database.
@@ -21,7 +21,7 @@ previous_tag="$(read_release PREVIOUS_IMAGE_TAG)"
 export IMAGE="$image" IMAGE_TAG="$previous_tag"
 
 step "Rolling back $ENVIRONMENT from $current_tag to $previous_tag"
-compose up --detach --no-deps app
+compose up --detach --no-deps --pull never app
 write_release "$image" "$previous_tag" "$current_tag"
 
 step "Smoke check: $HEALTH_URL"
