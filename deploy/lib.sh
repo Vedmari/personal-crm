@@ -70,7 +70,8 @@ read_release() {
 }
 
 write_release() {
-  printf 'IMAGE=%s\nIMAGE_TAG=%s\nPREVIOUS_IMAGE_TAG=%s\n' "$1" "$2" "$3" >"$RELEASE_FILE"
+  printf 'IMAGE=%s\nIMAGE_TAG=%s\nPREVIOUS_IMAGE_TAG=%s\n' "$1" "$2" "$3" >"$RELEASE_FILE.next"
+  mv -f "$RELEASE_FILE.next" "$RELEASE_FILE"
 }
 
 file_size() {
@@ -111,6 +112,31 @@ backup_database() {
   mv "$file.partial" "$file" || return 1
   printf '%s\n' "$file"
 }
+
+# Names sort chronologically in UTC. Historical deploy dumps have no suffix.
+# Only rotate the class just backed up, and never a restore safety copy.
+rotate_backups() (
+  local kind="$1" file pattern
+  local -a matching=()
+  local LC_ALL=C
+  pattern='^[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{6}_([0-9a-f]{7}|unknown)'
+  case "$kind" in
+    daily) pattern+='_daily[.]dump$' ;;
+    deploy) pattern+='[.]dump$' ;;
+    *) fail "Unknown backup class: $kind" ;;
+  esac
+  for file in "$BACKUP_DIR"/*.dump; do
+    if [[ -f "$file" && "${file##*/}" =~ $pattern ]]; then
+      matching+=("$file")
+    fi
+  done
+  if (( ${#matching[@]} > 7 )); then
+    # A reset can be reading a dump or waiting for confirmation on staging.
+    exec 8>>/opt/crm/staging/deploy.lock
+    flock --shared --timeout 1800 8 || fail "Staging is busy. Backup rotation did not run."
+    rm -- "${matching[@]:0:${#matching[@]}-7}"
+  fi
+)
 
 # Drops the database of this environment, creates it again and loads the
 # dump from the file $1 into it.
@@ -190,33 +216,27 @@ wait_for_health() {
   curl --fail --silent --show-error --max-time 5 "$1"
 }
 
-# Prints the current and the previous version of the app in a release.env.
-release_tags() {
-  if [ -f "$1" ]; then
-    sed -n 's/^IMAGE_TAG=//p; s/^PREVIOUS_IMAGE_TAG=//p' "$1"
-  fi
-}
-
-# Removes the app images that no environment needs. Production and the test
-# stand use the same images on this server, so it keeps the current and the
-# previous version of both: each of them can always be rolled back. Untagged
-# leftovers of the same image (from a re-run that rebuilt a tag) are removed too.
-remove_old_images() {
-  local image="$1" tag keep=" "
-  for tag in $(release_tags /opt/crm/prod/release.env) $(release_tags /opt/crm/staging/release.env); do
-    keep+="$tag "
-  done
-  echo "Keeping:${keep% }"
-
-  docker image ls "$image" --format '{{.Tag}}' | while read -r tag; do
-    case "$tag" in "<none>") continue ;; esac
-    case "$keep" in *" $tag "*) continue ;; esac
-    if docker image rm "$image:$tag" >/dev/null; then
-      echo "removed $image:$tag"
-    else
-      echo "could not remove $image:$tag" >&2
+# Called with the production lock held, after a successful smoke check.
+# Wait for a staging deployment before reading its tag or removing shared images.
+remove_old_images() (
+  local image="$1" cutoff created timestamp tag current previous staging tags
+  exec 8>>/opt/crm/staging/deploy.lock
+  flock --shared --timeout 1800 8 || fail "Staging is busy. Image cleanup did not run."
+  current=$(read_release IMAGE_TAG)
+  previous=$(read_release PREVIOUS_IMAGE_TAG)
+  staging=$(sed -n 's/^IMAGE_TAG=//p' /opt/crm/staging/release.env)
+  [[ -n "$current" && -n "$staging" ]] || fail "Cannot identify active images for cleanup."
+  cutoff=$(date -u -d '14 days ago' +%s)
+  tags=$(docker image ls "$image" --format '{{.Tag}}')
+  while IFS= read -r tag; do
+    [[ "$tag" =~ ^[0-9a-f]{40}$ ]] || continue
+    case "$tag" in "$current"|"$previous"|"$staging") continue ;; esac
+    created=$(docker image inspect --format '{{.Created}}' "$image:$tag")
+    timestamp=$(date -d "$created" +%s)
+    if (( timestamp < cutoff )); then
+      docker image rm "$image:$tag"
     fi
-  done
-  docker image prune --force \
-    --filter "label=org.opencontainers.image.source=https://github.com/Vedmari/personal-crm" >/dev/null
-}
+  done <<< "$tags"
+  docker image prune --force --filter 'until=336h' \
+    --filter "label=org.opencontainers.image.source=https://github.com/Vedmari/personal-crm"
+)

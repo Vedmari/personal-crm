@@ -14,7 +14,7 @@
 #
 # The app version does not change and migrations are not run. The backup name
 # carries the version it was made for: if the app runs another version, roll
-# the app back first (deploy/rollback.sh).
+# the app back first (Deploy prod with Roll back selected).
 #
 # Production only. The test stand database is made again from a production
 # backup with deploy/reset-staging-db.sh.
@@ -89,7 +89,7 @@ if [ "$made_for" != "${tag:0:7}" ]; then
 
 WARNING: the backup was made for version $made_for, the app runs ${tag:0:7}.
 The app may not work with data from another version. Usually the app is rolled
-back first (deploy/rollback.sh) and then the backup of that version is restored.
+back first (Deploy prod with Roll back selected) and then the backup of that version is restored.
 EOF
 fi
 echo

@@ -1,0 +1,67 @@
+name: Deploy prod
+
+on:
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Commit SHA (empty = latest successful staging deployment)"
+        type: string
+        required: false
+      rollback:
+        description: "Roll back to the previous production version"
+        type: boolean
+        default: false
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy-prod:
+    if: github.ref == 'refs/heads/main' && github.actor == github.repository_owner && github.triggering_actor == github.repository_owner
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Select a successful staging deployment
+        if: ${{ !inputs.rollback }}
+        env:
+          REQUESTED_SHA: ${{ inputs.sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: python3 deploy/select-staging-release.py >> "$GITHUB_ENV"
+
+      - name: Set up SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+        run: bash deploy/setup-ssh.sh
+
+      - name: Deploy or roll back on the server
+        env:
+          ROLLBACK: ${{ inputs.rollback }}
+          REGISTRY_TOKEN: ${{ github.token }}
+        run: bash deploy/run-release.sh prod
+
+      - name: Remove old images on the server
+        if: ${{ !inputs.rollback }}
+        run: ssh server bash /opt/crm/prod/deploy/clean-server-images.sh
+
+  clean-images:
+    if: ${{ !inputs.rollback }}
+    needs: deploy-prod
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: Remove old CRM builds from GHCR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 deploy/clean-registry.py

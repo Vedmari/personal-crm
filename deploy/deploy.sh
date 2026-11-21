@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Deploys one version of the app to one environment on the server.
-# Called by GitHub Actions (.github/workflows/deploy.yml) after the image is in GHCR:
+# Called by GitHub Actions after the image is in GHCR:
 #
 #   deploy.sh <prod|staging> <image> <tag> <registry-user>    (registry token on stdin)
 #
@@ -13,8 +13,7 @@
 # the image -> start Postgres -> production: back up the database; test stand:
 # if its database is empty, load a copy of production from the latest
 # production backup -> apply migrations in a one-off container -> start the
-# app on the new image -> smoke-check /health -> production: remove the
-# images that no environment needs.
+# app on the new image -> smoke-check /health.
 #
 # The backup goes to /opt/crm/prod/backups; its name carries the version that
 # ran before this deploy. It is restored only by hand with deploy/restore.sh.
@@ -67,6 +66,7 @@ if [ "$ENVIRONMENT" = prod ]; then
     fail "Backup failed. Migrations were not applied: the app keeps running the previous version${current_tag:+ ($current_tag)}."
   fi
   echo "$backup_file ($(file_size "$backup_file"))"
+  rotate_backups deploy
 else
   step "Checking the test stand database"
   tables="$(count_tables)" || fail "Could not read the test stand database."
@@ -95,12 +95,8 @@ step "Smoke check: $HEALTH_URL"
 if ! wait_for_health "$HEALTH_URL"; then
   fail "Smoke check failed: $tag is running but /health does not answer 200.
 Nothing was rolled back. Logs: ssh crm docker logs --tail 100 $ENVIRONMENT-app-1
-Rollback by hand: ssh crm bash $APP_DIR/deploy/rollback.sh $ENVIRONMENT"
-fi
-
-if [ "$ENVIRONMENT" = prod ]; then
-  step "Removing old images (keeping the current and the previous version of production and of the test stand)"
-  remove_old_images "$image"
+For production, select Roll back in the Deploy prod workflow.
+For staging, run: ssh crm bash /opt/crm/staging/deploy/rollback.sh staging"
 fi
 
 step "Deployed $tag to $ENVIRONMENT"

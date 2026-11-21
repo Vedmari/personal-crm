@@ -1,28 +1,14 @@
-# Push to main -> build the app image tagged with the commit SHA -> push it to GHCR
-# -> the same image goes to both environments on the server, independently of each other:
-#   - deploy-staging: the test stand, https://test-app.lichnaya-crm.ru
-#   - deploy-prod:    production, https://app.lichnaya-crm.ru
-# Each job copies deploy/ to the folder of its environment and runs
-# deploy/deploy.sh <environment> there (migrations -> new image -> smoke /health;
-# production backs up its database first).
-#
-# Repository settings used here:
-#   secrets.DEPLOY_SSH_KEY     - private SSH key of the deploy user on the server
-#   vars.DEPLOY_HOST           - server IP address
-#   vars.DEPLOY_USER           - user on the server
-#   vars.DEPLOY_KNOWN_HOSTS    - server host key, so SSH never trusts an unknown host
-name: Deploy
+name: Deploy staging
 
 on:
   push:
     branches: [main]
-  workflow_dispatch:
 
 # One run at a time: a newer push does not interrupt the running deploy.
 # GitHub keeps one pending run; a newer push may replace that pending run.
 # deploy/deploy.sh also locks its environment on the server.
 concurrency:
-  group: deploy
+  group: deploy-staging
   cancel-in-progress: false
 
 jobs:
@@ -31,8 +17,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-    outputs:
-      image: ${{ steps.image.outputs.name }}
     steps:
       - uses: actions/checkout@v7
 
@@ -48,7 +32,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Check for an existing release image
+        id: published
+        run: bash deploy/check-image.sh "${{ steps.image.outputs.name }}"
+
       - uses: docker/build-push-action@v7
+        if: steps.published.outputs.exists == 'false'
         with:
           context: .
           push: true
@@ -76,70 +65,9 @@ jobs:
           DEPLOY_KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS }}
           DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
           DEPLOY_USER: ${{ vars.DEPLOY_USER }}
-        run: |
-          install -d -m 700 ~/.ssh
-          (umask 077 && printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key)
-          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          cat > ~/.ssh/config <<EOF
-          Host server
-            HostName $DEPLOY_HOST
-            User $DEPLOY_USER
-            IdentityFile ~/.ssh/deploy_key
-            IdentitiesOnly yes
-            StrictHostKeyChecking yes
-            ConnectTimeout 60
-            ServerAliveInterval 30
-          EOF
-
-      - name: Copy deploy scripts to the server
-        run: scp -r deploy server:/opt/crm/staging/
+        run: bash deploy/setup-ssh.sh
 
       - name: Deploy on the server
         env:
-          IMAGE: ${{ needs.build.outputs.image }}
-          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          printf '%s\n' "$REGISTRY_TOKEN" |
-            ssh server bash /opt/crm/staging/deploy/deploy.sh staging "$IMAGE" "$GITHUB_SHA" "$GITHUB_ACTOR"
-
-  # Production still gets every push to main, without waiting for the test stand.
-  deploy-prod:
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: read
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Set up SSH
-        env:
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          DEPLOY_KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS }}
-          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
-        run: |
-          install -d -m 700 ~/.ssh
-          (umask 077 && printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key)
-          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          cat > ~/.ssh/config <<EOF
-          Host server
-            HostName $DEPLOY_HOST
-            User $DEPLOY_USER
-            IdentityFile ~/.ssh/deploy_key
-            IdentitiesOnly yes
-            StrictHostKeyChecking yes
-            ConnectTimeout 60
-            ServerAliveInterval 30
-          EOF
-
-      - name: Copy deploy scripts to the server
-        run: scp -r deploy server:/opt/crm/prod/
-
-      - name: Deploy on the server
-        env:
-          IMAGE: ${{ needs.build.outputs.image }}
-          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          printf '%s\n' "$REGISTRY_TOKEN" |
-            ssh server bash /opt/crm/prod/deploy/deploy.sh prod "$IMAGE" "$GITHUB_SHA" "$GITHUB_ACTOR"
+          REGISTRY_TOKEN: ${{ github.token }}
+        run: bash deploy/run-release.sh staging
