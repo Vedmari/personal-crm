@@ -187,6 +187,15 @@ test.describe("the link comes by email", () => {
     const email = uniqueEmail("new");
     const letter = await requestLetter(page, email);
 
+    const token = new URL(letter.link).searchParams.get("token");
+    expect(token).toBeTruthy();
+    const [stored] = await withDatabase(
+      (sql) => sql`
+      select identifier from verification where value::jsonb ->> 'email' = ${email}
+    `,
+    );
+    expect(stored.identifier).toMatch(/^hashed-magic-link:[a-f0-9]{64}$/);
+    expect(stored.identifier).not.toContain(token!);
     await page.goto(letter.link);
 
     await expect(contactsHeading(page)).toBeVisible();

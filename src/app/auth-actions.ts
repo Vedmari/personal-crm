@@ -4,7 +4,6 @@
 // for the signed-in user and starts with requireUserId, and these two are
 // what a user who is not signed in yet (or is leaving) can do.
 
-import { isAPIError } from "better-auth/api";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -30,33 +29,49 @@ export async function requestLoginLinkAction(
     return { ok: false, errors: parsed.errors };
   }
 
-  try {
-    await auth.api.signInMagicLink({
-      body: {
-        email: parsed.data,
-        // After the sign-in the list opens: the letter is often opened on
-        // another device, where there is no page to go back to.
-        callbackURL: "/",
-        errorCallbackURL: "/login/expired",
+  // Route the form through the same HTTP middleware and IP budget as the API.
+  const requestHeaders = await headers();
+  const linkHeaders = new Headers({ "content-type": "application/json" });
+  for (const name of ["origin", "x-forwarded-for"]) {
+    const value = requestHeaders.get(name);
+    if (value) linkHeaders.set(name, value);
+  }
+  const { baseURL } = await auth.$context;
+  const response = await auth.handler(
+    new Request(
+      new URL(
+        "/api/auth/sign-in/magic-link",
+        baseURL || "http://localhost:3000",
+      ),
+      {
+        method: "POST",
+        headers: linkHeaders,
+        body: JSON.stringify({
+          email: parsed.data,
+          // After the sign-in the list opens: the letter is often opened on
+          // another device, where there is no page to go back to.
+          callbackURL: "/",
+          errorCallbackURL: "/login/expired",
+        }),
       },
-      headers: await headers(),
-    });
-  } catch (error) {
-    const code = isAPIError(error) ? error.body?.code : undefined;
+    ),
+  );
+
+  if (!response.ok) {
+    if (response.status === 429) {
+      return { ok: false, errors: {}, message: TOO_MANY_LINKS };
+    }
+    const { code } = await response.json();
 
     if (code === LOGIN_ERROR.invalidEmail) {
       return { ok: false, errors: { email: "Проверьте адрес почты" } };
-    }
-
-    if (code === LOGIN_ERROR.tooManyLinks) {
-      return { ok: false, errors: {}, message: TOO_MANY_LINKS };
     }
 
     if (code === LOGIN_ERROR.emailNotSent) {
       return { ok: false, errors: {}, message: EMAIL_NOT_SENT };
     }
 
-    throw error;
+    throw new Error(`Sign-in link request failed (HTTP ${response.status})`);
   }
 
   return { ok: true, data: { email: parsed.data } };
