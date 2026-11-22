@@ -63,6 +63,6 @@ compose up --detach --no-deps app
 
 step "Smoke check: $HEALTH_URL"
 wait_for_health "$HEALTH_URL" || fail "The database is loaded, but /health does not answer 200.
-Logs: ssh crm docker logs --tail 100 staging-app-1"
+Logs: ssh crm sudo journalctl --no-pager -n 100 CONTAINER_TAG=crm-staging-app"
 
 step "The test stand database is a copy of production from $(basename "$backup")"

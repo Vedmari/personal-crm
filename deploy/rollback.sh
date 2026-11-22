@@ -26,6 +26,6 @@ write_release "$image" "$previous_tag" "$current_tag"
 
 step "Smoke check: $HEALTH_URL"
 wait_for_health "$HEALTH_URL" ||
-  fail "Smoke check failed after rollback. Logs: docker logs --tail 100 $ENVIRONMENT-app-1"
+  fail "Smoke check failed after rollback. Logs: sudo journalctl --no-pager -n 100 CONTAINER_TAG=crm-$ENVIRONMENT-app"
 
 step "Rolled back $ENVIRONMENT to $previous_tag"
