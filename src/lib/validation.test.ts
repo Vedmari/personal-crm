@@ -116,3 +116,48 @@ function formOf(fields: Record<string, string>): FormData {
 
   return form;
 }
+
+describe("contact birthdays", () => {
+  function parse(day: string, month: string, year: string) {
+    const form = new FormData();
+    for (const [key, value] of Object.entries({
+      name: "Анна",
+      birthDay: day,
+      birthMonth: month,
+      birthYear: year,
+    }))
+      form.set(key, value);
+    return parseContactForm(form);
+  }
+
+  it.each([
+    ["", "", ""],
+    ["03", "01", ""],
+    ["29", "2", "2000"],
+    ["29", "2", ""],
+  ])("accepts %s/%s/%s", (d, m, y) => {
+    expect(parse(d, m, y)).toMatchObject({
+      ok: true,
+      data: {
+        birthDay: d ? Number(d) : null,
+        birthMonth: m ? Number(m) : null,
+        birthYear: y ? Number(y) : null,
+      },
+    });
+  });
+
+  it.each([
+    ["31", "4", "1990"],
+    ["31", "4", ""],
+    ["29", "2", "1900"],
+    ["", "", "1990"],
+    ["1", "", ""],
+    ["", "1", ""],
+    ["1", "", "2000"],
+    ["", "1", "2000"],
+    ["1", "1", "0"],
+    ["1.5", "3", ""],
+  ])("rejects %s/%s/%s", (d, m, y) => {
+    expect(parse(d, m, y)).toMatchObject({ ok: false });
+  });
+});

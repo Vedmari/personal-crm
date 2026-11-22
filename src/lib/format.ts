@@ -61,6 +61,23 @@ export function formatNoteDate(date: Date): string {
 
 // Day values from the database are calendar days already counted in Moscow
 // time, so they are formatted as they are, without another time zone shift.
+const birthdayFormat = new Intl.DateTimeFormat("ru-RU", {
+  day: "numeric",
+  month: "long",
+  timeZone: "UTC",
+});
+
+export function formatBirthday(
+  day: number,
+  month: number,
+  year: number | null = null,
+): string {
+  const caption = birthdayFormat.format(
+    new Date(Date.UTC(2000, month - 1, day)),
+  );
+  return year === null ? caption : `${caption} ${year} года`;
+}
+
 const calendarDayFormat = new Intl.DateTimeFormat("ru-RU", {
   day: "numeric",
   month: "long",

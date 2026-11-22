@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 
+import { BirthdaysBlock } from "@/components/birthdays-block";
 import { AddContactButton } from "@/components/add-contact-button";
 import { AlphabetTabs } from "@/components/alphabet-tabs";
 import { ContactList, ContactListSkeleton } from "@/components/contact-list";
@@ -59,6 +60,9 @@ export default function HomePage(props: PageProps<"/">) {
                 a search starts, and the search bar must not jump up. */}
             <Suspense fallback={null}>
               <KeepInTouchBlock searchParams={props.searchParams} />
+            </Suspense>
+            <Suspense fallback={null}>
+              <BirthdaysBlock searchParams={props.searchParams} />
             </Suspense>
             <Suspense fallback={<ContactListSkeleton />}>
               <ContactList searchParams={props.searchParams} />

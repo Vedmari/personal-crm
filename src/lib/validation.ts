@@ -1,6 +1,6 @@
 import type { KeepInTouchInterval } from "@/db/schema";
 
-export type ContactInput = {
+type ContactText = {
   name: string;
   about: string;
   howWeMet: string;
@@ -9,6 +9,10 @@ export type ContactInput = {
   agreements: string;
 };
 
+export const BIRTH_FIELDS = ["birthDay", "birthMonth", "birthYear"] as const;
+export type BirthField = (typeof BIRTH_FIELDS)[number];
+export type ContactInput = ContactText &
+  Partial<Record<BirthField, number | null>>;
 export type ContactField = keyof ContactInput;
 
 export type FieldErrors<Field extends string> = Partial<Record<Field, string>>;
@@ -16,7 +20,7 @@ export type FieldErrors<Field extends string> = Partial<Record<Field, string>>;
 export type ParseResult<Data, Field extends string> =
   { ok: true; data: Data } | { ok: false; errors: FieldErrors<Field> };
 
-export const CONTACT_LIMITS: Record<ContactField, number> = {
+export const CONTACT_LIMITS: Record<keyof ContactText, number> = {
   name: 200,
   about: 300,
   howWeMet: 500,
@@ -27,7 +31,7 @@ export const CONTACT_LIMITS: Record<ContactField, number> = {
 
 export const NOTE_MAX_LENGTH = 10000;
 
-const CONTACT_FIELDS = Object.keys(CONTACT_LIMITS) as ContactField[];
+const CONTACT_FIELDS = Object.keys(CONTACT_LIMITS) as (keyof ContactText)[];
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -36,13 +40,61 @@ function readText(formData: FormData, field: string): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function parseBirthday(
+  form: FormData,
+): ParseResult<Partial<Record<BirthField, number | null>>, BirthField> {
+  // An older form omits all three keys. Preserve any birthday saved since.
+  if (!BIRTH_FIELDS.some((field) => form.has(field)))
+    return { ok: true, data: {} };
+  const parts = { birthDay: null, birthMonth: null, birthYear: null } as Record<
+    BirthField,
+    number | null
+  >;
+  for (const field of BIRTH_FIELDS) {
+    const value = form.get(field);
+    if (value === null || value === "") continue;
+    if (
+      typeof value !== "string" ||
+      !/^\d+$/.test(value) ||
+      !Number.isSafeInteger(Number(value))
+    ) {
+      return { ok: false, errors: { [field]: "Введите целое число" } };
+    }
+    parts[field] = Number(value);
+  }
+  const { birthDay: day, birthMonth: month, birthYear: year } = parts;
+  if (day === null && month === null && year === null)
+    return { ok: true, data: parts };
+  if (day === null || month === null)
+    return {
+      ok: false,
+      errors: {
+        [day === null ? "birthDay" : "birthMonth"]:
+          "Укажите день и месяц рождения",
+      },
+    };
+  if (year !== null && (year < 1 || year > 9999))
+    return { ok: false, errors: { birthYear: "Укажите год от 1 до 9999" } };
+  if (month < 1 || month > 12)
+    return { ok: false, errors: { birthMonth: "Укажите месяц от 1 до 12" } };
+  // Use a leap year only to validate a yearless February 29.
+  const lastDay = new Date(0);
+  lastDay.setUTCFullYear(year ?? 2000, month, 0);
+  if (day < 1 || day > lastDay.getUTCDate())
+    return {
+      ok: false,
+      errors: { birthDay: "Такой даты рождения не существует" },
+    };
+  return { ok: true, data: parts };
+}
+
 // Validation messages are shown in the interface, so they are in Russian.
 export function parseContactForm(
   formData: FormData,
 ): ParseResult<ContactInput, ContactField> {
   const data = Object.fromEntries(
     CONTACT_FIELDS.map((field) => [field, readText(formData, field)]),
-  ) as ContactInput;
+  ) as ContactText;
 
   const errors: FieldErrors<ContactField> = {};
 
@@ -61,11 +113,11 @@ export function parseContactForm(
     errors.email = "Похоже, в адресе почты ошибка";
   }
 
-  if (Object.keys(errors).length > 0) {
-    return { ok: false, errors };
-  }
-
-  return { ok: true, data };
+  const birthday = parseBirthday(formData);
+  if (!birthday.ok)
+    return { ok: false, errors: { ...errors, ...birthday.errors } };
+  if (Object.keys(errors).length > 0) return { ok: false, errors };
+  return { ok: true, data: { ...data, ...birthday.data } };
 }
 
 // One spelling of an email: "  Anna@Example.COM " and "anna@example.com" are

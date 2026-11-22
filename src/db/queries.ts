@@ -313,6 +313,27 @@ export const updateContact = safeQuery(
   },
 );
 
+export const listUpcomingBirthdays = safeQuery(
+  "listUpcomingBirthdays",
+  async (ownerId: string, now: Date = new Date()) => {
+    const today = sql`(${now.toISOString()}::timestamptz at time zone ${MOSCOW_TIME_ZONE})::date`;
+    return db.execute<{ id: number; name: string; day: string }>(sql`
+    with days as (
+      select ${today} + offset_days as occasion from generate_series(0,6) as offsets(offset_days)
+    )
+    select ${contacts.id} as id, ${contacts.name} as name, to_char(occasion,'YYYY-MM-DD') as day
+    from ${contacts} join days on
+      ${contacts.birthMonth} = extract(month from occasion)
+      and (${contacts.birthDay} = extract(day from occasion)
+        or (${contacts.birthDay} = 29 and ${contacts.birthMonth} = 2
+          and extract(day from occasion) = 28 and extract(month from occasion + 1) = 3))
+    where ${ownContact(ownerId)} and ${contacts.deletedAt} is null
+      and (${contacts.birthYear} is null or ${contacts.birthYear} <= extract(year from occasion))
+    order by occasion, ${nameInAlphabeticalOrder}, ${contacts.id}
+  `);
+  },
+);
+
 // --- Keep in touch ---
 //
 // The card and the "Пора связаться" block count the deadline with the same
