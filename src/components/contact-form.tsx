@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  BIRTH_FIELDS,
   CONTACT_LIMITS,
   type ContactField,
   type ContactInput,
@@ -33,7 +34,7 @@ const SAVE_FAILED =
   "Не получилось сохранить. Проверьте, что база данных запущена, и попробуйте ещё раз.";
 
 type TextFieldConfig = {
-  name: Exclude<ContactField, "agreements">;
+  name: Exclude<keyof typeof CONTACT_LIMITS, "agreements">;
   label: string;
   placeholder: string;
   type?: "text" | "tel" | "email";
@@ -77,6 +78,7 @@ const TEXT_FIELDS: TextFieldConfig[] = [
 // The order of fields on screen, top to bottom.
 const FIELD_ORDER: ContactField[] = [
   ...TEXT_FIELDS.map((field) => field.name),
+  ...BIRTH_FIELDS,
   "agreements",
 ];
 
@@ -190,6 +192,52 @@ export function ContactForm<Data>({
           );
         })}
 
+        <fieldset className="min-w-0 sm:col-span-2">
+          <legend className="font-serif text-body font-bold text-ink">
+            Дата рождения
+          </legend>
+          <div className="grid grid-cols-3 gap-8">
+            {BIRTH_FIELDS.map((field) => {
+              const label = {
+                birthDay: "День",
+                birthMonth: "Месяц",
+                birthYear: "Год",
+              }[field];
+              const id = "contact-" + field;
+              return (
+                <div key={field} className="min-w-0">
+                  <Label htmlFor={id}>{label}</Label>
+                  <Input
+                    id={id}
+                    name={field}
+                    inputMode="numeric"
+                    defaultValue={initialValues[field] ?? ""}
+                    placeholder={
+                      { birthDay: "ДД", birthMonth: "ММ", birthYear: "ГГГГ" }[
+                        field
+                      ]
+                    }
+                    aria-describedby={
+                      errors[field] ? id + "-error" : "birthday-help"
+                    }
+                    aria-invalid={Boolean(errors[field])}
+                  />
+                  {errors[field] && (
+                    <p
+                      id={id + "-error"}
+                      className="font-sans text-body text-destructive"
+                    >
+                      {errors[field]}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <p id="birthday-help" className="font-sans text-body text-ink-muted">
+            Достаточно дня и месяца. Год можно пропустить.
+          </p>
+        </fieldset>
         <div className="grid sm:col-span-2">
           <Label htmlFor="contact-agreements">О чём договорились</Label>
           <Textarea

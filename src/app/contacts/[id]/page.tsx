@@ -24,7 +24,13 @@ import {
   listGroups,
   listNotes,
 } from "@/db/queries";
-import { formatDay, formatNoteDate, pluralize, toTelHref } from "@/lib/format";
+import {
+  formatBirthday,
+  formatDay,
+  formatNoteDate,
+  pluralize,
+  toTelHref,
+} from "@/lib/format";
 import { requireUserId } from "@/lib/current-user";
 import { listHref } from "@/lib/list-filter";
 import { cn } from "@/lib/utils";
@@ -124,6 +130,9 @@ async function ContactCard({
                   phone: contact.phone,
                   email: contact.email,
                   agreements: contact.agreements,
+                  birthDay: contact.birthDay,
+                  birthMonth: contact.birthMonth,
+                  birthYear: contact.birthYear,
                 }}
               />
             </div>
@@ -177,6 +186,15 @@ async function ContactCard({
                     </a>
                   ) : null}
                 </DetailRow>
+                {contact.birthDay !== null && contact.birthMonth !== null && (
+                  <DetailRow label="Дата рождения">
+                    {formatBirthday(
+                      contact.birthDay,
+                      contact.birthMonth,
+                      contact.birthYear,
+                    )}
+                  </DetailRow>
+                )}
                 <DetailRow label="Откуда знакомы">{contact.howWeMet}</DetailRow>
                 {/* The select is one rule tall; the deadline goes on the next rule. */}
                 <DetailRow label="Как часто общаться">

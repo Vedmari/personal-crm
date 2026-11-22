@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   index,
   integer,
   pgEnum,
@@ -151,6 +152,9 @@ export const contacts = pgTable(
       .references(() => user.id, { onDelete: "restrict" }),
     name: text().notNull(),
     // Who this person is: role, relation, anything that identifies them.
+    birthDay: integer("birth_day"),
+    birthMonth: integer("birth_month"),
+    birthYear: integer("birth_year"),
     about: text().notNull().default(""),
     howWeMet: text("how_we_met").notNull().default(""),
     phone: text().notNull().default(""),
@@ -171,7 +175,26 @@ export const contacts = pgTable(
     // bring it back, and is erased after that.
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
-  (table) => [index("contacts_owner_id_idx").on(table.ownerId)],
+  (table) => [
+    index("contacts_owner_id_idx").on(table.ownerId),
+    check(
+      "contacts_birthday_valid",
+      sql`
+      (${table.birthDay} is null and ${table.birthMonth} is null and ${table.birthYear} is null)
+      or (
+        ${table.birthDay} is not null and ${table.birthMonth} is not null
+        and ${table.birthMonth} between 1 and 12
+        and (${table.birthYear} is null or ${table.birthYear} between 1 and 9999)
+        and ${table.birthDay} between 1 and case
+          when ${table.birthMonth} in (4,6,9,11) then 30
+          when ${table.birthMonth} <> 2 then 31
+          when ${table.birthYear} is null or mod(${table.birthYear},400)=0
+            or (mod(${table.birthYear},4)=0 and mod(${table.birthYear},100)<>0) then 29
+          else 28 end
+      )
+    `,
+    ),
+  ],
 );
 
 export const notes = pgTable(

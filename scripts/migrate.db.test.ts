@@ -304,3 +304,20 @@ it("updates an empty database without the owner's email [Пустая база �
     ]);
   });
 }, 60_000);
+
+it("keeps old contacts with an unknown birthday", async () => {
+  await fillOldDatabase();
+  expect((await runMigrate("owner@example.com")).exitCode).toBe(0);
+  await withDatabase(async (sql) => {
+    const rows =
+      await sql`select name, birth_day, birth_month, birth_year from contacts order by id`;
+    expect(rows).toEqual(
+      OLD_CONTACTS.map((name) => ({
+        name,
+        birth_day: null,
+        birth_month: null,
+        birth_year: null,
+      })),
+    );
+  });
+}, 60_000);
