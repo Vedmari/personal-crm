@@ -87,8 +87,8 @@ export const account = pgTable(
   (table) => [index("account_user_id_idx").on(table.userId)],
 );
 
-// Sign-in links that wait to be opened: identifier "magic-link:<key>", the
-// email in the JSON of `value`. Opening a link deletes its row.
+// Pending sign-in links store a hashed identifier and the email in `value`.
+// Opening a link consumes its row.
 export const verification = pgTable(
   "verification",
   {

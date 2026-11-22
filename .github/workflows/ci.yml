@@ -1,5 +1,5 @@
 # Every pull request into main is checked before it can be merged:
-# lint, format, types, Vitest, Playwright and the app image build.
+# production dependency audit, lint, format, types, Vitest, Playwright and the app image build.
 # The three jobs run in parallel; branch protection on main requires all of
 # them to be green ("Checks", "E2E", "Image"), so a red PR cannot be merged.
 # The image is only built here, not pushed: deploy.yml builds and pushes it
@@ -58,6 +58,9 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      - name: Audit production dependencies
+        run: pnpm audit --prod
 
       - name: Lint
         run: pnpm lint

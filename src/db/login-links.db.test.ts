@@ -11,6 +11,7 @@ import {
   cancelOtherLoginLinks,
   releaseLoginLinkSend,
   reserveLoginLinkSend,
+  storedLoginLinkId,
 } from "@/db/login-links";
 import { loginLinkSends, verification } from "@/db/schema";
 
@@ -96,10 +97,16 @@ describe("releaseLoginLinkSend", () => {
 describe("cancelOtherLoginLinks", () => {
   // A link the way Better Auth 1.7 keeps it: the key in the identifier,
   // the email in the JSON of the value.
-  async function addLink(token: string, email: string): Promise<void> {
+  async function addLink(
+    token: string,
+    email: string,
+    legacy = false,
+  ): Promise<void> {
     await db.insert(verification).values({
       id: `id-${token}`,
-      identifier: `magic-link:${token}`,
+      identifier: legacy
+        ? `magic-link:${token}`
+        : storedLoginLinkId(`magic-link:${token}`),
       value: JSON.stringify({ type: "magic-link", email }),
       expiresAt: new Date(Date.now() + 15 * 60_000),
     });
@@ -110,17 +117,17 @@ describe("cancelOtherLoginLinks", () => {
       .select({ identifier: verification.identifier })
       .from(verification);
 
-    return rows.map((row) => row.identifier.replace("magic-link:", "")).sort();
+    return rows.map((row) => row.identifier).sort();
   }
 
   it("cancels the earlier links of the email and keeps the new one [Запросила ссылку дважды]", async () => {
-    await addLink("first", ANNA);
+    await addLink("first", ANNA, true);
     await addLink("second", ANNA);
     await addLink("new", ANNA);
 
     await cancelOtherLoginLinks(ANNA, "new");
 
-    expect(await linkTokens()).toEqual(["new"]);
+    expect(await linkTokens()).toEqual([storedLoginLinkId("magic-link:new")]);
   });
 
   it("keeps the links of other emails and other kinds of rows", async () => {
@@ -135,6 +142,9 @@ describe("cancelOtherLoginLinks", () => {
 
     await cancelOtherLoginLinks(ANNA, "anna-new");
 
-    expect(await linkTokens()).toEqual(["boris", "email-verification:anna"]);
+    expect(await linkTokens()).toEqual([
+      "email-verification:anna",
+      storedLoginLinkId("magic-link:boris"),
+    ]);
   });
 });

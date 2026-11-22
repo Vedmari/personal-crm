@@ -11,6 +11,7 @@ import {
   cancelOtherLoginLinks,
   releaseLoginLinkSend,
   reserveLoginLinkSend,
+  storedLoginLinkId,
 } from "@/db/login-links";
 import * as schema from "@/db/schema";
 
@@ -85,6 +86,16 @@ function sendIdOf(metadata: unknown): number | null {
 export const auth = betterAuth({
   database: drizzleAdapter(db, { provider: "pg", schema }),
   hooks: { before: checkLinkRequest },
+  verification: {
+    storeIdentifier: {
+      default: "plain",
+      overrides: {
+        "magic-link:": {
+          hash: async (identifier) => storedLoginLinkId(identifier),
+        },
+      },
+    },
+  },
   // A sign-in holds 30 days after the last visit on the device. The date is
   // moved on at most once a day, so not every page writes to the database:
   // the sign-in ends 29 to 30 days after the last visit.

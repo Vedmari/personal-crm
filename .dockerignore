@@ -3,6 +3,12 @@
 .env.*
 !.env.example
 /backups/
+/e2e/.auth/
+/test-results/
+/playwright-report/
+/blob-report/
+/.mcp/
+/prod-check/
 
 # Rebuilt inside the image
 node_modules

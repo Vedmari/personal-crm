@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import { and, eq, gte, lt, sql } from "drizzle-orm";
 
 import { safeQuery } from "./errors";
@@ -63,10 +65,11 @@ export const releaseLoginLinkSend = safeQuery(
   },
 );
 
-// A new link cancels the earlier links of the same email. Better Auth 1.7
-// keeps a link as identifier "magic-link:<key>" with the email in the JSON of
-// `value` (checked in its source; the e2e test «Запросила ссылку дважды»
-// fails if a later version keeps it otherwise).
+// A separate prefix lets Better Auth read outstanding legacy links without
+// accepting a stored digest as a bearer token through its plaintext fallback.
+export function storedLoginLinkId(identifier: string): string {
+  return `hashed-magic-link:${createHash("sha256").update(identifier).digest("hex")}`;
+}
 export const cancelOtherLoginLinks = safeQuery(
   "cancelOtherLoginLinks",
   async (email: string, keepToken: string): Promise<void> => {
@@ -74,8 +77,8 @@ export const cancelOtherLoginLinks = safeQuery(
       .delete(verification)
       .where(
         and(
-          sql`${verification.identifier} like 'magic-link:%'`,
-          sql`${verification.identifier} <> ${`magic-link:${keepToken}`}`,
+          sql`(${verification.identifier} like 'magic-link:%' or ${verification.identifier} like 'hashed-magic-link:%')`,
+          sql`${verification.identifier} <> ${storedLoginLinkId(`magic-link:${keepToken}`)}`,
           sql`${verification.value}::jsonb ->> 'email' = ${email}`,
         ),
       );
