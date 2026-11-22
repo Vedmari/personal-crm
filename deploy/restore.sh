@@ -119,7 +119,7 @@ compose up --detach --no-deps app
 
 step "Smoke check: $HEALTH_URL"
 wait_for_health "$HEALTH_URL" || fail "The database is restored, but /health does not answer 200.
-Logs: ssh crm docker logs --tail 100 prod-app-1
+Logs: ssh crm sudo journalctl --no-pager -n 100 CONTAINER_TAG=crm-prod-app
 Copy of the database before this restore: $snapshot"
 
 step "Restored $db_name from $(basename "$backup")"

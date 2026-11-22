@@ -94,7 +94,7 @@ write_release "$image" "$tag" "$previous_tag"
 step "Smoke check: $HEALTH_URL"
 if ! wait_for_health "$HEALTH_URL"; then
   fail "Smoke check failed: $tag is running but /health does not answer 200.
-Nothing was rolled back. Logs: ssh crm docker logs --tail 100 $ENVIRONMENT-app-1
+Nothing was rolled back. Logs: ssh crm sudo journalctl --no-pager -n 100 CONTAINER_TAG=crm-$ENVIRONMENT-app
 For production, select Roll back in the Deploy prod workflow.
 For staging, run: ssh crm bash /opt/crm/staging/deploy/rollback.sh staging"
 fi

@@ -19,13 +19,6 @@
 # page. A container that goes over its limit is stopped and started again
 # (restart: unless-stopped), and the other containers are not affected.
 
-x-logging:
-  &logging # Container logs are capped at 3 files of 10 MB so they cannot fill the disk.
-  driver: json-file
-  options:
-    max-size: "10m"
-    max-file: "3"
-
 x-database-url: &database-url
   DATABASE_URL: "postgresql://${POSTGRES_USER:?Set POSTGRES_USER in the .env of this environment}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the .env of this environment}@postgres:5432/${POSTGRES_DB:?Set POSTGRES_DB in the .env of this environment}"
 
@@ -46,7 +39,10 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-    logging: *logging
+    logging:
+      driver: journald
+      options:
+        tag: "crm-${COMPOSE_PROJECT_NAME}-postgres"
 
   # One-off step: applies migrations and exits. Never started by `up`.
   # Also runs the test data generator (deploy/seed.sh).
@@ -63,7 +59,10 @@ services:
         condition: service_healthy
     mem_limit: 256m
     profiles: ["tools"]
-    logging: *logging
+    logging:
+      driver: journald
+      options:
+        tag: "crm-${COMPOSE_PROJECT_NAME}-migrate"
 
   app:
     image: ${IMAGE}:${IMAGE_TAG}
@@ -94,7 +93,10 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
-    logging: *logging
+    logging:
+      driver: journald
+      options:
+        tag: "crm-${COMPOSE_PROJECT_NAME}-app"
 
 volumes:
   postgres_data:
